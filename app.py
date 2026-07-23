@@ -1,8 +1,9 @@
 import streamlit as st
-import google.generativeai as genai
-from PIL import Image
+import requests
+import base64
 import os
 import glob
+from PIL import Image
 
 # ১. পেজের লেআউট ও নাম সেটআপ
 st.set_page_config(
@@ -198,14 +199,10 @@ with col_head:
 with col_pika:
     st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=100)
 
-# ৪. AI কনফিগারেশন ও মেমোরি ক্যাশিং (Fast Loading)
+# ৪. এপিআই কি ও ফাইলসমূহ চেক
 try:
     raw_api_key = st.secrets["GEMINI_API_KEY"]
     api_key = str(raw_api_key).strip()
-    genai.configure(api_key=api_key)
-    
-    # দ্রুত ও নিখুঁত উত্তর দেওয়ার জন্য Gemini Model
-    model = genai.GenerativeModel('gemini-1.5-flash')
 
     pdf_files = glob.glob("*.pdf") + glob.glob("books/*.pdf")
     image_files = glob.glob("books/*.png") + glob.glob("books/*.jpg") + glob.glob("books/*.jpeg")
@@ -220,15 +217,6 @@ try:
 
     st.sidebar.markdown("---")
     st.sidebar.info("🔒 নিরাপত্তা: শুধুমাত্র ফাউন্ডার (SK Sahed) নতুন বই যুক্ত করতে পারবেন।")
-
-    # ⚡ অ্যাপের স্পিড বাড়ানোর জন্য র‍্যাম ক্যাশিং
-    @st.cache_data(show_spinner=False)
-    def load_pdf_bytes(pdf_paths):
-        pdf_data = []
-        for path in pdf_paths:
-            with open(path, "rb") as f:
-                pdf_data.append({"mime_type": "application/pdf", "data": f.read()})
-        return pdf_data
 
     col_m1, col_m2 = st.columns([3, 1])
     with col_m1:
@@ -285,6 +273,68 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
+    # ⚡ গুগল REST API দিয়ে সরাসরি রিকোয়েস্ট (AQ... এবং AIza... উভয় ধরনের কি সাপোর্ট করবে)
+    def call_gemini_api(api_key, prompt_text, pdf_paths, image_paths, user_img_file):
+        parts = [{"text": prompt_text}]
+
+        # ১. বইয়ের PDF যুক্ত করা
+        for pdf_path in pdf_paths:
+            with open(pdf_path, "rb") as f:
+                pdf_b64 = base64.b64encode(f.read()).decode('utf-8')
+                parts.append({
+                    "inline_data": {
+                        "mime_type": "application/pdf",
+                        "data": pdf_b64
+                    }
+                })
+
+        # ২. বইয়ের ছবিসমূহ যুক্ত করা
+        for img_path in image_paths:
+            with open(img_path, "rb") as f:
+                img_b64 = base64.b64encode(f.read()).decode('utf-8')
+                mime = "image/png" if img_path.lower().endswith(".png") else "image/jpeg"
+                parts.append({
+                    "inline_data": {
+                        "mime_type": mime,
+                        "data": img_b64
+                    }
+                })
+
+        # ৩. ইউজারের আপলোড করা খাতার ছবি যুক্ত করা
+        user_img_bytes = user_img_file.getvalue()
+        user_img_b64 = base64.b64encode(user_img_bytes).decode('utf-8')
+        mime_type = user_img_file.type if user_img_file.type else "image/jpeg"
+        
+        parts.append({"text": "\n[ইউজারের আপলোড করা খাতার ছবি]:"})
+        parts.append({
+            "inline_data": {
+                "mime_type": mime_type,
+                "data": user_img_b64
+            }
+        })
+
+        payload = {
+            "contents": [{
+                "parts": parts
+            }]
+        }
+
+        # সরাসরি Gemini 1.5 Flash REST Endpoint
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        headers = {"Content-Type": "application/json"}
+
+        response = requests.post(url, json=payload, headers=headers, timeout=120)
+        res_data = response.json()
+
+        if response.status_code == 200:
+            try:
+                return res_data['candidates'][0]['content']['parts'][0]['text']
+            except Exception:
+                return "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।"
+        else:
+            error_msg = res_data.get('error', {}).get('message', 'অজানা এরর')
+            raise Exception(f"গুগল এপিআই এরর (Code {response.status_code}): {error_msg}")
+
     if btn_find_only or btn_find_with_solution:
         if not (pdf_files or image_files):
             st.error("⚠️ গিটহাবে কোনো বই পাওয়া যায়নি! আগে গিটহাবে বইয়ের PDF ফাইল আপলোড করুন।")
@@ -296,9 +346,6 @@ try:
                 show_custom_loading()
 
             try:
-                # মেমোরি থেকে অতি দ্রুত PDF ডাটা লোড
-                cached_pdfs = load_pdf_bytes(pdf_files)
-
                 if btn_find_only:
                     prompt = """
                     তুমি একজন সুনিপুণ গণিত শিক্ষক ও এআই স্ক্যানার।
@@ -352,16 +399,8 @@ try:
                     (ছবিতে থাকা প্রতিটি অংকের জন্য বিস্তারিত সমাধান লেখো)
                     """
 
-                contents = [prompt] + cached_pdfs
-                
-                for img_path in image_files:
-                    contents.append(Image.open(img_path))
-
-                contents.append("\n[ইউজারের আপলোড করা খাতার ছবি]:")
-                contents.append(Image.open(query_image))
-
-                # জেমিনি এআই রেসপন্স
-                response = model.generate_content(contents)
+                # এপিআই কল
+                result_text = call_gemini_api(api_key, prompt, pdf_files, image_files, query_image)
 
                 loader_placeholder.empty()
 
@@ -372,7 +411,7 @@ try:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                st.info(response.text)
+                st.info(result_text)
 
             except Exception as e:
                 loader_placeholder.empty()
