@@ -7,7 +7,7 @@ from PIL import Image
 
 # 🎯 তোমার পছন্দের সবচেয়ে ফাস্ট ও লাইট (Lite) মডেল নাম এখানে সেট করা হয়েছে:
 # (ভবিষ্যতে গুগল নতুন কোনো মডেল আনলে তুমি শুধু এই নামটা বদলে নিতে পারবে)
-MODEL_NAME = "gemini-3.5-flash-lite"
+MODEL_NAME = "gemini-2.0-flash-lite"
 
 # ১. পেজের লেআউট ও নাম সেটআপ
 st.set_page_config(
