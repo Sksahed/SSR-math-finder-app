@@ -11,15 +11,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# ২. Custom CSS: অ্যানিমেটেড ব্যাকগ্রাউন্ড, হাইড 'Manage app' ও স্টাইলিং
+# ২. Custom CSS: অ্যানিমেটেড ব্যাকগ্রাউন্ড, স্টাইলিং ও টুলবার হাইড
 custom_css = """
 <style>
     /* 🚫 Streamlit এর 'Manage app', ফুটার ও হেডার মেনু পুরোপুরি হাইড করার কোড */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    [data-testid="stStatusWidget"] {display: none !important;}
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    [data-testid="stHeader"] {display: none !important;}
     [data-testid="stToolbar"] {display: none !important;}
+    [data-testid="stDecoration"] {display: none !important;}
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .stAppToolbar {display: none !important;}
     div[class*="viewerBadge"] {display: none !important;}
     button[title="View app in Streamlit Community Cloud"] {display: none !important;}
 
@@ -91,7 +94,7 @@ custom_css = """
         box-shadow: 0 12px 30px rgba(236, 72, 153, 0.7) !important;
     }
 
-    /* রেজাল্ট বক্সের (st.info / st.success) টেক্সট পরিষ্কার ও উজ্জ্বল করার নিয়ম */
+    /* রেজাল্ট বক্সের (st.info / st.success) টেক্সট স্টাইল */
     [data-testid="stAlert"] {
         background: rgba(15, 23, 42, 0.9) !important;
         backdrop-filter: blur(16px) !important;
@@ -118,7 +121,7 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# --- 👑 AUTOMATIC POP-UP DIALOG WITH YOUR PHOTO & PIKACHU ---
+# --- 👑 FOUNDER POPUP DIALOG ---
 @st.dialog("👑 Meet the Founder")
 def show_founder_popup():
     col1, col2 = st.columns([1, 2])
@@ -144,12 +147,11 @@ def show_founder_popup():
     st.info("💡 'যেকোনো কঠিন অংক এখন এক ক্লিকে খুঁজে বের করো সহজে!'")
     st.success("স্বাগতম আমাদের Math Finder AI Pro প্ল্যাটফর্মে! 🌟")
 
-# সাইটে ঢোকার সাথে সাথে অটোমেটিক পপ-আপ ওপেন করার লজিক
 if "founder_popup_shown" not in st.session_state:
     st.session_state.founder_popup_shown = True
     show_founder_popup()
 
-# --- 🌟 ওপরে স্টাইলিশ ওয়েলকাম বার ---
+# --- 🌟 TOP WELCOME BAR ---
 founder_photo_url = "https://raw.githubusercontent.com/Sksahed/SSR-math-finder-app/refs/heads/main/IMG_20260609_112752_911.webp"
 
 st.markdown(f"""
@@ -177,7 +179,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ৩. অ্যানিমেটেড হেডার উইথ পিকাচু ও ডোরেমন
+# ৩. Header
 col_dora, col_head, col_pika = st.columns([1, 3, 1])
 
 with col_dora:
@@ -196,12 +198,14 @@ with col_head:
 with col_pika:
     st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=100)
 
-# ৪. এআই কনফিগারেশন ও স্পিড অপটিমাইজেশন ক্যাশিং
+# ৪. AI কনফিগারেশন ও মেমোরি ক্যাশিং (Fast Loading)
 try:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    raw_api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = str(raw_api_key).strip()
     genai.configure(api_key=api_key)
-    MODEL_NAME = 'gemini-2.5-flash'
-    model = genai.GenerativeModel(MODEL_NAME)
+    
+    # দ্রুত ও নিখুঁত উত্তর দেওয়ার জন্য Gemini Model
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
     pdf_files = glob.glob("*.pdf") + glob.glob("books/*.pdf")
     image_files = glob.glob("books/*.png") + glob.glob("books/*.jpg") + glob.glob("books/*.jpeg")
@@ -212,24 +216,20 @@ try:
         for p in pdf_files:
             st.sidebar.caption(f"📖 {os.path.basename(p)}")
     else:
-        st.sidebar.warning("⚠️ গিটহাবে কোনো বইয়ের PDF যুক্ত করা হয়নি। দয়া করে GitHub-এ PDF ফাইল আপলোড করুন।")
+        st.sidebar.warning("⚠️ গিটহাবে কোনো বইয়ের PDF যুক্ত করা হয়নি।")
 
     st.sidebar.markdown("---")
-    st.sidebar.info("🔒 নিরাপত্তা: শুধুমাত্র ফাউন্ডার (SK Sahed) গিটহাব থেকে নতুন বই যুক্ত করতে বা পরিবর্তন করতে পারবেন।")
+    st.sidebar.info("🔒 নিরাপত্তা: শুধুমাত্র ফাউন্ডার (SK Sahed) নতুন বই যুক্ত করতে পারবেন।")
 
-    # ⚡ স্পিড বাড়ানোর জাদুকরী ফাংশন: ফাইলগুলোকে গুগল ক্লাউডে ক্যাশ করে রাখবে
-    @st.cache_resource(show_spinner=False)
-    def prepare_book_files(pdf_paths, img_paths):
-        cached_files = []
-        for pdf in pdf_paths:
-            uploaded = genai.upload_file(pdf)
-            cached_files.append(uploaded)
-        for img in img_paths:
-            uploaded = genai.upload_file(img)
-            cached_files.append(uploaded)
-        return cached_files
+    # ⚡ অ্যাপের স্পিড বাড়ানোর জন্য র‍্যাম ক্যাশিং
+    @st.cache_data(show_spinner=False)
+    def load_pdf_bytes(pdf_paths):
+        pdf_data = []
+        for path in pdf_paths:
+            with open(path, "rb") as f:
+                pdf_data.append({"mime_type": "application/pdf", "data": f.read()})
+        return pdf_data
 
-    # মূল অংক খোঁজার অংশ
     col_m1, col_m2 = st.columns([3, 1])
     with col_m1:
         st.markdown("""
@@ -249,7 +249,6 @@ try:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ৫. দুটি অ্যাকশন বাটন
     btn_col1, btn_col2 = st.columns(2)
 
     with btn_col1:
@@ -258,7 +257,7 @@ try:
     with btn_col2:
         btn_find_with_solution = st.button("📝 অংকটি উত্তর সহ খোঁজো")
 
-    # 🎬 ক্লোই পার্কের (Chloe Park) স্পিড বুক রিডিং GIF সহ লোডিং প্যানেল
+    # 🎬 ক্লোই পার্কের (Chloe Park) দ্রুত বই পড়ার GIF সহ লোডার
     def show_custom_loading():
         return st.markdown("""
         <div style="
@@ -286,35 +285,32 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    # বাটন লজিক প্রসেসিং
     if btn_find_only or btn_find_with_solution:
         if not (pdf_files or image_files):
             st.error("⚠️ গিটহাবে কোনো বই পাওয়া যায়নি! আগে গিটহাবে বইয়ের PDF ফাইল আপলোড করুন।")
         elif not query_image:
             st.error("⚠️ যে অংকটি স্ক্যান করতে চান, তার ছবি আপলোড করুন!")
         else:
-            # অ্যানিমেটেড লোডিং স্ক্রিন
             loader_placeholder = st.empty()
             with loader_placeholder:
                 show_custom_loading()
 
             try:
-                # ১. ক্যাশ করা ফাইল লোড করা (এটি সেকেন্ডের মধ্যে প্রসেস শেষ করবে)
-                book_contents = prepare_book_files(pdf_files, image_files)
+                # মেমোরি থেকে অতি দ্রুত PDF ডাটা লোড
+                cached_pdfs = load_pdf_bytes(pdf_files)
 
-                # ২. প্রম্পট সিলেক্ট করা
                 if btn_find_only:
                     prompt = """
                     তুমি একজন সুনিপুণ গণিত শিক্ষক ও এআই স্ক্যানার।
-                    তোমাকে পাঠ্যবইয়ের পৃষ্ঠা এবং শেষে একটি খাতার ছবি দেওয়া হয়েছে।
+                    তোমাকে পাঠ্যবইয়ের PDF পৃষ্ঠা এবং শেষে খাতার ছবি দেওয়া হয়েছে।
 
                     ⚠️ নির্দেশনাসমূহ:
-                    ১. খাতার ছবিটির উপর থেকে নিচ পর্যন্ত থাকা **সকল অংক চিহ্নিত করো** (১০টি বা তার বেশি থাকলেও)।
+                    ১. খাতার ছবিটিতে থাকা **সকল অংক চিহ্নিত করো**।
                     ২. প্রতিটি অংক বইয়ের কোথায় আছে তা বের করো:
                        - **🎯 হুবহু মিল:** যদি বইয়ের প্রশ্ন ও সংখ্যা হুবহু এক হয়।
-                       - **🔄 টাইপ / ধারণাগত মিল:** যদি প্রশ্নের নিয়ম বা টাইপ এক কিন্তু সংখ্যা পরিবর্তিত।
+                       - **🔄 টাইপ / ধারণাগত মিল:** যদি প্রশ্নের নিয়ম এক কিন্তু সংখ্যা পরিবর্তিত।
                     
-                    ৩. কোনো বিস্তারিত সমাধানের প্রয়োজন নেই। শুধু নিচের ফরম্যাটে তথ্য দাও:
+                    ৩. নিম্নের বিন্যাসে তথ্য উপস্থাপন করো:
 
                     ---
                     ### 🔢 অংক ১: [খাতায় থাকা অংকটি]
@@ -328,15 +324,13 @@ try:
                     """
                 else:
                     prompt = """
-                    তুমি একজন অত্যন্ত সুনিপুণ ও অভিজ্ঞ গণিত শিক্ষক।
-                    তোমাকে পাঠ্যবই এবং শেষে ইউজারের আপলোড করা একটি খাতার ছবি দেওয়া হয়েছে।
+                    তুমি একজন অভিজ্ঞ গণিত শিক্ষক।
+                    তোমাকে পাঠ্যবই এবং শেষে ইউজারের খাতার ছবি দেওয়া হয়েছে।
 
                     ⚠️ মূল নির্দেশনাসমূহ:
-                    ১. খাতার ছবিতে ১টি থেকে ১০টি বা তার বেশি যতগুলোই অংক থাকুক না কেন, **প্রতিটি অংককে পৃথকভাবে শনাক্ত করো**।
-                    ২. প্রতিটি অংক বইয়ের কোথায় আছে (অধ্যায়, পৃষ্ঠা ও দাগ নম্বর) তা বের করো।
-                    ৩. 🎯 **বিশেষ প্রাধান্য (ধাপে ধাপে সমাধান):** প্রতিটি অংকের জন্য বইটিতে যে নিয়ম ও সূত্র ব্যবহার করা হয়েছে, ঠিক সেই নিয়ম মেনে **একদম পরিষ্কার ও ধাপে ধাপে (Step-by-Step)** কষে সমাধান প্রদান করো।
-                       - কোনো শর্টকাট বা সরাসরি উত্তর দেওয়া যাবে না। 
-                       - প্রতি লাইনে কীভাবে অংকটি এগোচ্ছে তা ধাপে ধাপে (ধাপ ১, ধাপ ২, ধাপ ৩...) স্পষ্ট করে বুঝিয়ে দাও।
+                    ১. খাতার ছবিটির প্রতিটি অংক পৃথকভাবে শনাক্ত করো।
+                    ২. প্রতিটি অংক বইয়ের কোথায় আছে (অধ্যায়, পৃষ্ঠা ও দাগ নম্বর) বের করো।
+                    ৩. 🎯 **ধাপে ধাপে সমাধান:** বইয়ের নির্দিষ্ট নিয়ম ও সূত্র প্রয়োগ করে অংকগুলোর **ধাপে ধাপে (Step 1, Step 2, Step 3...) সম্পূর্ণ সমাধান** লেখো।
 
                     ৪. আউটপুট ফরম্যাট:
 
@@ -350,23 +344,27 @@ try:
                     #### 📝 বইয়ের নিয়মে ধাপে ধাপে সম্পূর্ণ সমাধান:
                     - 📐 **প্রযোজ্য সূত্র / নিয়ম:**
                     - ✍️ **ধাপে ধাপে সমাধান (Step-by-Step):**
-                      * **ধাপ ১:** [প্রথম ধাপের গাণিতিক হিসেব ও ব্যাখ্যা]
-                      * **ধাপ ২:** [দ্বিতীয় ধাপের গাণিতিক হিসেব ও ব্যাখ্যা]
-                      * **ধাপ ৩:** [পরবর্তী ধাপের গাণিতিক হিসেব...]
+                      * **ধাপ ১:** [প্রথম ধাপের হিসেব ও ব্যাখ্যা]
+                      * **ধাপ ২:** [দ্বিতীয় ধাপের হিসেব ও ব্যাখ্যা]
+                      * **ধাপ ৩:** [পরবর্তী ধাপ...]
                     - ✅ **চূড়ান্ত উত্তর (Final Answer):**
                     ---
-                    (ছবিতে থাকা প্রতিটি অংকের জন্য ধাপে ধাপে বিস্তারিত সমাধান লেখো)
+                    (ছবিতে থাকা প্রতিটি অংকের জন্য বিস্তারিত সমাধান লেখো)
                     """
 
-                # ৩. জেমিনির কাছে তথ্য পাঠানো (ক্যাশ করা ফাইল ব্যবহারে অতি দ্রুত কাজ করবে)
-                contents = [prompt] + book_contents + ["\n[ইউজারের আপলোড করা খাতার ছবি]:", Image.open(query_image)]
+                contents = [prompt] + cached_pdfs
+                
+                for img_path in image_files:
+                    contents.append(Image.open(img_path))
 
+                contents.append("\n[ইউজারের আপলোড করা খাতার ছবি]:")
+                contents.append(Image.open(query_image))
+
+                # জেমিনি এআই রেসপন্স
                 response = model.generate_content(contents)
 
-                # লোডার রিমুভ করা
                 loader_placeholder.empty()
 
-                # রেজাল্ট প্রদর্শন
                 st.balloons()
                 st.markdown("""
                 <div class="card" style="border-left: 6px solid #10b981;">
@@ -381,5 +379,5 @@ try:
                 st.error(f"একটি সমস্যা হয়েছে: {e}")
 
 except Exception as e:
-    st.error("⚠️ অ্যাপ কনফিগারেশনে সমস্যা হয়েছে। দয়া করে Streamlit Secrets-এ সঠিক 'GEMINI_API_KEY' যুক্ত করুন।")
+    st.error("⚠️ অ্যাপ কনফিগারেশনে সমস্যা হয়েছে। Streamlit Secrets-এ 'GEMINI_API_KEY' সঠিক আছে কিনা নিশ্চিত করুন।")
         
