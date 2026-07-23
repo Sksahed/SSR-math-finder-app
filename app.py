@@ -9,16 +9,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# ২. Custom CSS: কালার, অ্যানিমেশন ও মডার্ন ডিজাইন
+# ২. Custom CSS: প্রফেশনাল ও রঙিন লুক
 custom_css = """
 <style>
-    /* ব্যাকগ্রাউন্ড গ্রেডিয়েন্ট ও ফন্ট */
+    /* ব্যাকগ্রাউন্ড গ্রেডিয়েন্ট */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    /* হেডার বক্স স্টাইল */
+    /* হেডার বক্স ডিজাইন */
     .header-container {
         background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
         padding: 30px;
@@ -29,7 +29,7 @@ custom_css = """
         margin-bottom: 25px;
     }
 
-    /* প্রধান কার্ডের ডিজাইন */
+    /* প্রধান কার্ডের স্টাইল */
     .card {
         background: rgba(255, 255, 255, 0.9);
         padding: 20px;
@@ -39,13 +39,13 @@ custom_css = """
         margin-bottom: 20px;
     }
 
-    /* সাইডবার সুন্দর করা */
+    /* সাইডবার ডিজাইন */
     [data-testid="stSidebar"] {
         background-color: #ffffff;
         border-right: 2px solid #e0e0e0;
     }
 
-    /* বাটনের ডিজাইন */
+    /* অ্যাকশন বাটন ডিজাইন */
     .stButton > button {
         background: linear-gradient(90deg, #FF512F 0%, #DD2476 100%) !important;
         color: white !important;
@@ -56,22 +56,27 @@ custom_css = """
         border: none !important;
         box-shadow: 0 5px 15px rgba(221, 36, 118, 0.4) !important;
         width: 100%;
+        transition: all 0.3s ease !important;
+    }
+
+    .stButton > button:hover {
+        transform: scale(1.02) !important;
     }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# ৩. হেডার
+# ৩. অ্যানিমেটেড হেডার
 st.markdown("""
 <div class="header-container">
     <h1 style='margin:0;'>✨ Math Finder AI Pro ✨</h1>
     <p style='font-size: 16px; opacity: 0.9; margin-top: 8px;'>
-        স্মার্ট এআই দিয়ে যেকোনো অংকের লেসন ও পৃষ্ঠা নম্বর খুঁজে বের করুন এক ক্লিকে!
+        gemini-3.5-flash-lite দিয়ে দ্রুততম সময়ে অংকের লেসন ও পৃষ্ঠা খুঁজুন!
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-# ৪. সাইডবার সেটআপ
+# ৪. সাইডবার কনফিগারেশন
 st.sidebar.markdown("### ⚙️ কনফিগারেশন")
 api_key = st.sidebar.text_input("🔑 Gemini API Key দিন:", type="password")
 
@@ -79,19 +84,9 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # অটোমেটিক চালুকৃত মডেল সিলেক্ট করার ফাংশন
-        def get_working_model():
-            try:
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        if 'flash' in m.name.lower() or 'pro' in m.name.lower():
-                            return m.name
-            except Exception:
-                pass
-            return "gemini-1.5-flash"
-
-        selected_model_name = get_working_model()
-        model = genai.GenerativeModel(selected_model_name)
+        # এখানে তোমার পছন্দের gemini-3.5-flash-lite মডেল সেট করা হলো
+        MODEL_NAME = 'gemini-3.5-flash-lite'
+        model = genai.GenerativeModel(MODEL_NAME)
 
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📚 ১. বই বা নোটস আপলোড")
@@ -101,7 +96,7 @@ if api_key:
             accept_multiple_files=True
         )
 
-        # ৫. প্রধান পেজের কন্টেন্ট
+        # ৫. প্রধান পেজের ইনপুট অংশ
         st.markdown("""
         <div class="card">
             <h3>🔍 ২. নির্দিষ্ট অংক স্ক্যান করুন</h3>
@@ -123,26 +118,26 @@ if api_key:
             elif not query_image:
                 st.error("⚠️ যে অংকটি বের করতে চান, তার ছবি আপলোড করুন!")
             else:
-                with st.spinner("✨ AI আপনার বইয়ের সমস্ত পৃষ্ঠা স্ক্যান করে তথ্য ম্যাচ করছে..."):
+                with st.spinner("✨ gemini-3.5-flash-lite দিয়ে বইয়ের পৃষ্ঠা স্ক্যান করা হচ্ছে..."):
                     try:
                         prompt = """
-                        তুমি একজন অত্যন্ত দক্ষ গণিত শিক্ষক ও গবেষক। 
+                        তুমি একজন অত্যন্ত দক্ষ গণিত শিক্ষক। 
                         তোমাকে নিচে কিছু বইয়ের পৃষ্ঠা/PDF এবং শেষে একটি নির্দিষ্ট অংকের ছবি দেওয়া হয়েছে।
                         
                         তোমার কাজ হলো:
-                        ১. অংকটি বইয়ের কোনো পৃষ্ঠার সাথে মিলে যায় কিনা তা নিখুঁতভাবে চেক করা।
-                        ২. উত্তরটি খুব সুন্দর, স্পষ্ট ও বাংলায় উপস্থাপন করা:
+                        ১. অংকটি বইয়ের কোনো পৃষ্ঠার সাথে মিলে যায় কিনা তা চেক করা।
+                        ২. উত্তরটি সুন্দর ও স্পষ্ট বাংলায় উপস্থাপন করা:
                            - 📖 **অধ্যায় / লেসন:** 
                            - 📄 **পৃষ্ঠা নম্বর:** 
                            - 🔢 **অংক নম্বর:** 
-                           - 💡 **সমাধানের ইঙ্গিত (Hints):**
+                           - 💡 **সংক্ষিপ্ত সমাধান / ইঙ্গিত:**
                         
-                        যদি হুবহু না পাওয়া যায়, তবে সবচেয়ে কাছাকাছি মিল থাকা অংকটির বিবরণ দাও।
+                        যদি হুবহু না পাওয়া যায়, তবে সবচেয়ে কাছাকাছি মিল থাকা অংকটির বিবরণ দাও।
                         """
 
                         contents = [prompt]
 
-                        # বইয়ের পেজ / PDF প্রক্রিয়াকরণ
+                        # বইয়ের পেজ / PDF যোগ করা
                         for index, page in enumerate(uploaded_book_pages):
                             contents.append(f"\n[বইয়ের পেজ {index + 1}]:")
                             if page.type == "application/pdf":
@@ -150,26 +145,28 @@ if api_key:
                             else:
                                 contents.append(Image.open(page))
 
-                        # নির্দিষ্ট অংকের ছবি
-                        contents.append("\n[খুঁজতে চাওয়া নির্দিষ্ট অংক]:")
+                        # স্ক্যান করতে চাওয়া অংক
+                        contents.append("\n[খুঁজতে চাওয়া অংক]:")
                         contents.append(Image.open(query_image))
 
+                        # জেমিনি দিয়ে কন্টেন্ট জেনারেট করা
                         response = model.generate_content(contents)
 
-                        # ফলাফল
+                        # সফলতা বার্তা ও অ্যানিমেশন
                         st.balloons()
                         st.markdown("""
                         <div class="card" style="border-left: 6px solid #28a745;">
-                            <h2 style="color: #28a745;">🎉 ফলাফল পেয়ে গেছি!</h2>
+                            <h2 style="color: #28a745;">🎉 ফলাফল পাওয়া গেছে!</h2>
                         </div>
                         """, unsafe_allow_html=True)
                         
                         st.info(response.text)
 
                     except Exception as e:
-                        st.error(f"একটি ত্রুটি ঘটেছে: {e}")
+                        st.error(f"একটি সমস্যা হয়েছে: {e}")
+                        
     except Exception as e:
         st.sidebar.error(f"API Key সেটআপে সমস্যা হয়েছে: {e}")
 else:
-    st.warning("👈 অ্যাপটি শুরু করতে বামপাশের সাইডবারে আপনার **Gemini API Key** বসান।")
+    st.warning("👈 অ্যাপটি চালু করতে সাইডবারে আপনার **Gemini API Key** বসান।")
         
