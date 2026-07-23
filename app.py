@@ -66,19 +66,24 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# --- 👑 AUTOMATIC POP-UP DIALOG WITH STYLISH FOUNDER BADGE ---
+# --- 👑 AUTOMATIC POP-UP DIALOG WITH NORMAL PHOTO & ANIMATED STICKER ---
 @st.dialog("👑 Meet the Founder")
 def show_founder_popup():
     col1, col2 = st.columns([1, 2])
     with col1:
         founder_photo = "https://raw.githubusercontent.com/Sksahed/SSR-math-finder-app/refs/heads/main/IMG_20260609_112752_911.webp"
         
-        # স্টাইলিশ ফন্ট ও ব্যাজসহ ছবি প্রদর্শন
+        # নরমাল ছবি এবং ছবিতে পিকাচু অ্যানিমেটেড স্টিকার
         st.markdown(f"""
-        <div style="text-align: center;">
-            <span style="background: linear-gradient(45deg, #FF416C, #FF4B2B); color: white; padding: 4px 14px; border-radius: 20px; font-weight: bold; font-size: 12px; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">👑 FOUNDER</span>
+        <div style="text-align: center; margin-bottom: 15px;">
+            <span style="background: linear-gradient(45deg, #FF416C, #FF4B2B); color: white; padding: 5px 14px; border-radius: 20px; font-weight: bold; font-size: 12px; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">👑 FOUNDER</span>
             <br><br>
-            <img src="{founder_photo}" width="120" style="border-radius: 50%; border: 4px solid #6c5ce7; box-shadow: 0 6px 15px rgba(0,0,0,0.25);">
+            <div style="position: relative; display: inline-block;">
+                <!-- আসল শেপে নরমাল ছবি -->
+                <img src="{founder_photo}" width="160" style="border-radius: 16px; border: 3px solid #6c5ce7; box-shadow: 0 6px 15px rgba(0,0,0,0.2);">
+                <!-- ছবির ডান কোনে অ্যানিমেটেড পিকাচু -->
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif" width="50" style="position: absolute; bottom: -12px; right: -15px; filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3));">
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
