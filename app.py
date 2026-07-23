@@ -11,12 +11,20 @@ st.set_page_config(
     layout="wide"
 )
 
-# ২. Custom CSS: প্রিমিয়াম ও স্টাইলিশ গ্লাসমরফিজম থিম
+# ২. Custom CSS: আকর্ষণীয় অ্যানিমেটেড ব্যাকগ্রাউন্ড ও হাই-কন্ট্রাস্ট টেক্সট থিম
 custom_css = """
 <style>
-    /* প্রিমিয়াম ব্যাকগ্রাউন্ড গ্রেডিয়েন্ট ও ডিজাইন */
+    /* ১. স্মুথ অ্যানিমেটেড ব্যাকগ্রাউন্ড গ্রেডিয়েন্ট */
+    @keyframes animatedBackground {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
     .stApp {
-        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+        background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #4c1d95, #1e1b4b);
+        background-size: 400% 400%;
+        animation: animatedBackground 12s ease infinite;
         font-family: 'Poppins', 'Segoe UI', sans-serif;
         color: #f8fafc;
     }
@@ -28,26 +36,26 @@ custom_css = """
         border-radius: 24px;
         color: white;
         text-align: center;
-        box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
+        box-shadow: 0 20px 40px rgba(99, 102, 241, 0.4);
         margin-bottom: 25px;
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     /* স্টাইলিশ গ্লাসমরফিজম কার্ড */
     .card {
-        background: rgba(30, 41, 59, 0.7);
+        background: rgba(30, 41, 59, 0.75);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         padding: 24px;
         border-radius: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
         margin-bottom: 20px;
     }
 
     /* সাইডবার স্টাইলিশ করা */
     [data-testid="stSidebar"] {
-        background-color: #0f172a;
+        background-color: rgba(15, 23, 42, 0.9);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
 
@@ -64,14 +72,38 @@ custom_css = """
         padding: 14px 30px !important;
         border-radius: 35px !important;
         border: none !important;
-        box-shadow: 0 8px 25px rgba(236, 72, 153, 0.4) !important;
+        box-shadow: 0 8px 25px rgba(236, 72, 153, 0.5) !important;
         width: 100%;
         transition: all 0.3s ease !important;
     }
 
     .stButton > button:hover {
         transform: translateY(-2px) scale(1.02) !important;
-        box-shadow: 0 12px 30px rgba(236, 72, 153, 0.6) !important;
+        box-shadow: 0 12px 30px rgba(236, 72, 153, 0.7) !important;
+    }
+
+    /* ২. রেজাল্ট বক্সের (st.info / st.success) টেক্সট পরিষ্কার ও উজ্জ্বল করার নিয়ম */
+    [data-testid="stAlert"] {
+        background: rgba(15, 23, 42, 0.9) !important;
+        backdrop-filter: blur(16px) !important;
+        border: 2px solid #a855f7 !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        padding: 20px !important;
+    }
+
+    [data-testid="stAlert"] p, 
+    [data-testid="stAlert"] li, 
+    [data-testid="stAlert"] span, 
+    [data-testid="stAlert"] div {
+        color: #f1f5f9 !important; /* সম্পূর্ণ উজ্জ্বল সাদা টেক্সট */
+        font-size: 17px !important;
+        line-height: 1.7 !important;
+    }
+
+    [data-testid="stAlert"] strong {
+        color: #38bdf8 !important; /* বোল্ড হেডিং ও লেখার জন্য আকর্ষণীয় স্কাই-ব্লু কালার */
+        font-size: 18px !important;
     }
 </style>
 """
@@ -113,7 +145,7 @@ founder_photo_url = "https://raw.githubusercontent.com/Sksahed/SSR-math-finder-a
 
 st.markdown(f"""
 <div style="
-    background: rgba(30, 41, 59, 0.8);
+    background: rgba(30, 41, 59, 0.85);
     backdrop-filter: blur(12px);
     padding: 12px 20px;
     border-radius: 20px;
@@ -121,7 +153,7 @@ st.markdown(f"""
     align-items: center;
     gap: 15px;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
     margin-bottom: 20px;
 ">
     <img src="{founder_photo_url}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #a855f7;">
@@ -241,7 +273,7 @@ try:
                     st.balloons()
                     st.markdown("""
                     <div class="card" style="border-left: 6px solid #10b981;">
-                        <h2 style="color: #34d399;">🎉 ফলাফল পাওয়া গেছে!</h2>
+                        <h2 style="color: #34d399; margin:0;">🎉 ফলাফল পাওয়া গেছে!</h2>
                     </div>
                     """, unsafe_allow_html=True)
                     
