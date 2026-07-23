@@ -5,6 +5,10 @@ import os
 import glob
 from PIL import Image
 
+# 🎯 তোমার পছন্দের সবচেয়ে ফাস্ট ও লাইট (Lite) মডেল নাম এখানে সেট করা হয়েছে:
+# (ভবিষ্যতে গুগল নতুন কোনো মডেল আনলে তুমি শুধু এই নামটা বদলে নিতে পারবে)
+MODEL_NAME = "gemini-3.5-flash-lite"
+
 # ১. পেজের লেআউট ও নাম সেটআপ
 st.set_page_config(
     page_title="Math Finder AI Pro", 
@@ -273,7 +277,7 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    # ⚡ গুগল REST API দিয়ে সরাসরি রিকোয়েস্ট (AQ... এবং AIza... উভয় ধরনের কি সাপোর্ট করবে)
+    # ⚡ গুগল REST API (Flash-Lite / Light-weight মডেল ব্যবহার করে)
     def call_gemini_api(api_key, prompt_text, pdf_paths, image_paths, user_img_file):
         parts = [{"text": prompt_text}]
 
@@ -319,8 +323,8 @@ try:
             }]
         }
 
-        # সরাসরি Gemini 1.5 Flash REST Endpoint
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        # 🚀 নির্ধারিত মডেলের REST API এন্ডপয়েন্ট
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
         headers = {"Content-Type": "application/json"}
 
         response = requests.post(url, json=payload, headers=headers, timeout=120)
