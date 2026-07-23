@@ -97,11 +97,39 @@ if "founder_popup_shown" not in st.session_state:
     st.session_state.founder_popup_shown = True
     show_founder_popup()
 
+# --- 🌟 ওপরে লাল গোল করা জায়গায় নতুন WELCOME BAR ---
+founder_photo_url = "https://raw.githubusercontent.com/Sksahed/SSR-math-finder-app/refs/heads/main/IMG_20260609_112752_911.webp"
+
+st.markdown(f"""
+<div style="
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 10px 18px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 2px solid #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 15px;
+">
+    <img src="{founder_photo_url}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #6c5ce7;">
+    <div>
+        <div style="margin: 0; color: #2d3436; font-size: 15px; font-weight: bold;">
+            Welcome to my AI finding website 👋
+        </div>
+        <div style="margin: 0; font-size: 11px; color: #6c5ce7; font-weight: 600;">
+            Created by SK Sahed
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 # ৩. অ্যানিমেটেড হেডার উইথ পিকাচু ও ডোরেমন
 col_dora, col_head, col_pika = st.columns([1, 3, 1])
 
 with col_dora:
-    st.image("https://media.giphy.com/media/l41FJv_sYvEw4P73y/giphy.gif", width=120)
+    st.image("https://media.giphy.com/media/l41FJv_sYvEw4P73y/giphy.gif", width=100)
 
 with col_head:
     st.markdown("""
@@ -114,11 +142,10 @@ with col_head:
     """, unsafe_allow_html=True)
 
 with col_pika:
-    st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=110)
+    st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=100)
 
-# ৪. অটোমেটিক জেমিনি এআই কনফিগারেশন (উইদাউট ইউজার ইনপুট)
+# ৪. অটোমেটিক জেমিনি এআই কনফিগারেশন
 try:
-    # Streamlit Secrets থেকে সরাসরি এপিআই কি নিয়ে নেবে
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
     MODEL_NAME = 'gemini-3.5-flash-lite'
@@ -147,7 +174,7 @@ try:
         )
     
     with col_m2:
-        st.image("https://media.giphy.com/media/1d5Zn8FNHJCMw/giphy.gif", width=130)
+        st.image("https://media.giphy.com/media/1d5Zn8FNHJCMw/giphy.gif", width=120)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
