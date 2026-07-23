@@ -67,9 +67,9 @@ custom_css = """
     .stButton > button {
         background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%) !important;
         color: white !important;
-        font-size: 18px !important;
+        font-size: 17px !important;
         font-weight: 600 !important;
-        padding: 14px 30px !important;
+        padding: 14px 20px !important;
         border-radius: 35px !important;
         border: none !important;
         box-shadow: 0 8px 25px rgba(236, 72, 153, 0.5) !important;
@@ -98,7 +98,7 @@ custom_css = """
     [data-testid="stAlert"] div {
         color: #f1f5f9 !important;
         font-size: 16px !important;
-        line-height: 1.6 !important;
+        line-height: 1.7 !important;
     }
 
     [data-testid="stAlert"] strong {
@@ -214,13 +214,13 @@ try:
     with col_m1:
         st.markdown("""
         <div class="card">
-            <h3 style='color: #f8fafc; margin-top: 0;'>🔍 খাতার মাল্টিপল (১০+) অংক ও প্যাটার্ন স্ক্যানার</h3>
-            <p style='color: #cbd5e1;'>খাতার পাতায় ১টি থেকে শুরু করে ১০ বা তার বেশি যতগুলোই অংক থাকুক, এআই উপর থেকে নিচে সবগুলো স্ক্যান করে টাইপ ও সূত্র অনুযায়ী ম্যাচ করাবে!</p>
+            <h3 style='color: #f8fafc; margin-top: 0;'>🔍 খাতার প্রশ্ন আপলোড করো</h3>
+            <p style='color: #cbd5e1;'>খাতার পাতা বা অংকের ছবি আপলোড করো। এরপর নিচের যেকোনো একটি অপশনে ক্লিক করে স্ক্যান শুরু করো!</p>
         </div>
         """, unsafe_allow_html=True)
 
         query_image = st.file_uploader(
-            "অংকের ছবি বা খাতার সম্পূর্ণ পৃষ্ঠা আপলোড করুন:", 
+            "অংকের ছবি বা খাতার পৃষ্ঠা আপলোড করুন:", 
             type=["png", "jpg", "jpeg"]
         )
     
@@ -229,70 +229,146 @@ try:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # সার্চ বাটন
-    if st.button("🚀 সকল (১০+) অংক ও প্যাটার্ন স্ক্যান করো"):
+    # ৫. দুটি অ্যাকশন বাটন
+    btn_col1, btn_col2 = st.columns(2)
+
+    with btn_col1:
+        btn_find_only = st.button("🔍 অংকটি কোথায় আছে খোঁজো")
+
+    with btn_col2:
+        btn_find_with_solution = st.button("📝 অংকটি উত্তর সহ খোঁজো")
+
+    # শ্যাডো অ্যানিমেটেড লোডার ফাংশন
+    def show_custom_loading():
+        return st.markdown("""
+        <div style="
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(16px);
+            padding: 20px;
+            border-radius: 24px;
+            border: 2px solid #a855f7;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        ">
+            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdWp3MHpsNXByMGJmMGtjc3Z2dDVrcHV3MmVyMHVucXZrb2Vrd2NzeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKSjRrfIPjeiVyM/giphy.gif" width="90" style="border-radius: 12px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));">
+            <div style="text-align: left;">
+                <h4 style="color: #f8fafc; margin: 0; font-size: 18px; font-weight: 600;">
+                    একটু wait করুন Sk sahed স্যার পিকাচু আর ডোরেমন কে সাথে নিয়ে আপনার প্রশ্নটি খুঁজছে... 🔍⚡
+                </h4>
+                <p style="color: #38bdf8; margin: 5px 0 0 0; font-size: 13px;">
+                    📖 বইয়ের সকল অধ্যায় ও পৃষ্ঠা স্ক্যান করা হচ্ছে...
+                </p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # বাটন লজিক প্রসেসিং
+    if btn_find_only or btn_find_with_solution:
         if not (pdf_files or image_files):
             st.error("⚠️ গিটহাবে কোনো বই পাওয়া যায়নি! আগে গিটহাবে বইয়ের PDF ফাইল আপলোড করুন।")
         elif not query_image:
-            st.error("⚠️ যে খাতা/পৃষ্ঠাটি স্ক্যান করতে চান, তার ছবি আপলোড করুন!")
+            st.error("⚠️ যে অংকটি স্ক্যান করতে চান, তার ছবি আপলোড করুন!")
         else:
-            with st.spinner("✨ খাতার পাতায় থাকা ১০+ অংক ও বইয়ের গাণিতিক টাইপ স্ক্যান করা হচ্ছে..."):
-                try:
-                    # 🎯 ১০+ অংক নিখুঁতভাবে স্ক্যান করার জন্য আপগ্রেডেড প্রম্পট
+            # অ্যানিমেটেড লোডিং প্যানেল দেখানো
+            loader_placeholder = st.empty()
+            with loader_placeholder:
+                show_custom_loading()
+
+            try:
+                # মোড ১: শুধুমাত্র অংকের অবস্থান অনুসন্ধান (কোনো বিস্তারিত সমাধান থাকবে না)
+                if btn_find_only:
                     prompt = """
-                    তুমি একজন অত্যন্ত সূক্ষ্মদৃষ্টিসম্পন্ন গণিত শিক্ষক ও এআই স্ক্যানার।
+                    তুমি একজন সুনিপুণ গণিত শিক্ষক ও এআই স্ক্যানার।
                     তোমাকে সংরক্ষিত বইয়ের PDF/পৃষ্ঠা এবং শেষে একটি খাতার ছবি দেওয়া হয়েছে।
 
-                    ⚠️ বিশেষ নির্দেশনা:
-                    ১. খাতার ছবিটির একদম উপর থেকে নিচ পর্যন্ত ক্রমানুসারে (১, ২, ৩ ... ১০+) থাকা **সবকটি অংক চিহ্নিত করো**। ছবিতে যদি ১০টি বা তার বেশি অংক থাকে, তবে কোনো অংককেই এড়িয়ে যাওয়া যাবে না।
-                    ২. প্রতিটি অংকের ক্ষেত্রে বইয়ের সাথে ২ ভাবে মিল খোঁজো:
-                       - **🎯 হুবহু মিল:** প্রশ্ন ও সংখ্যা উভয়ই যদি বইয়ের সাথে মিলে যায়।
-                       - **🔄 টাইপ / ধারণাগত মিল:** যদি প্রশ্নের নিয়ম/টাইপ সেম থাকে কিন্তু সংখ্যা বা প্রতীক পরিবর্তিত থাকে।
-
-                    ৩. সংক্ষিপ্ত ও পরিচ্ছন্নভাবে প্রতিটির বিবরণ দাও:
+                    ⚠️ নির্দেশনাসমূহ:
+                    ১. খাতার ছবিটির উপর থেকে নিচ পর্যন্ত থাকা **সকল অংক চিহ্নিত করো** (১০টি বা তার বেশি থাকলেও)।
+                    ২. প্রতিটি অংক বইয়ের কোথায় আছে তা বের করো:
+                       - **🎯 হুবহু মিল:** যদি বইয়ের প্রশ্ন ও সংখ্যা হুবহু এক হয়।
+                       - **🔄 টাইপ / ধারণাগত মিল:** যদি প্রশ্নের নিয়ম বা টাইপ এক কিন্তু সংখ্যা পরিবর্তিত।
+                    
+                    ৩. কোনো বিস্তারিত সমাধানের প্রয়োজন নেই। শুধু নিচের ফরম্যাটে তথ্য দাও:
 
                     ---
-                    ### 🔢 অংক ১: [খাতায় থাকা অংকটি]
+                    ### 🔢 অংক ১: [খাতায় থাকা অংকটি]
                     - 📌 **স্ট্যাটাস:** (🎯 হুবহু মিল / 🔄 টাইপ মিল)
-                    - 📖 **অধ্যায় ও পৃষ্ঠা:** 
-                    - 🔢 **বইয়ের অনুরূপ নম্বর:** 
-                    - 💡 **সংক্ষিপ্ত নিয়ম/সূত্র:**
-
+                    - 📖 **অধ্যায় / পাঠ্যবিষয়:** 
+                    - 📄 **বইয়ের পৃষ্ঠা নম্বর:** 
+                    - 🔢 **বইয়ের কোশ্চেন/দাগ নম্বর:** 
+                    - 💡 **সংক্ষিপ্ত সূত্র/ধরন:**
                     ---
-                    ### 🔢 অংক ২: [খাতায় থাকা অংকটি]
-                    - 📌 **স্ট্যাটাস:** ...
-                    (খাতার ছবিতে থাকা বাকি অংকগুলো একইভাবে ১, ২, ৩, ৪, ৫, ৬, ৭, ৮, ৯, ১০+ পর্যন্ত বিস্তারিত সাজাও)
+                    (ছবিতে থাকা প্রতিটি অংকের জন্য একইভাবে তথ্য দাও)
                     """
 
-                    contents = [prompt]
+                # মোড ২: অংকের অবস্থান + বইয়ের নিয়মে ধাপে ধাপে বিস্তারিত সমাধান (Step-by-Step)
+                else:
+                    prompt = """
+                    তুমি একজন অত্যন্ত সুনিপুণ ও অভিজ্ঞ গণিত শিক্ষক।
+                    তোমাকে সংরক্ষিত পাঠ্যবইয়ের PDF এবং শেষে ইউজারের আপলোড করা একটি খাতার ছবি দেওয়া হয়েছে।
 
-                    # ১. গিটহাবে জমা থাকা PDF ফাইলগুলো প্রসেস করা
-                    for pdf_path in pdf_files:
-                        with open(pdf_path, "rb") as f:
-                            contents.append({"mime_type": "application/pdf", "data": f.read()})
+                    ⚠️ মূল নির্দেশনাসমূহ:
+                    ১. খাতার ছবিতে ১টি থেকে ১০টি বা তার বেশি যতগুলোই অংক থাকুক না কেন, **প্রতিটি অংককে পৃথকভাবে শনাক্ত করো**।
+                    ২. প্রতিটি অংক বইয়ের কোথায় আছে (অধ্যায়, পৃষ্ঠা ও দাগ নম্বর) তা বের করো।
+                    ৩. 🎯 **বিশেষ প্রাধান্য (ধাপে ধাপে সমাধান):** ইউজার "অংকটি উত্তর সহ খোঁজো" বোতামে প্রেস করেছেন। তাই প্রতিটি অংকের জন্য বইটিতে যে নিয়ম ও সূত্র ব্যবহার করা হয়েছে, ঠিক সেই নিয়ম মেনে **একদম পরিষ্কার ও ধাপে ধাপে (Step-by-Step)** কষে সমাধান প্রদান করো। 
+                       - কোনো শর্টকাট বা সরাসরি উত্তর দেওয়া যাবে না। 
+                       - প্রতি লাইনে কীভাবে অংকটি এগোচ্ছে তা ধাপে ধাপে (ধাপ ১, ধাপ ২, ধাপ ৩...) স্পষ্ট করে বুঝিয়ে দাও।
 
-                    # ২. গিটহাবে জমা থাকা ছবি প্রসেস করা
-                    for img_path in image_files:
-                        contents.append(Image.open(img_path))
+                    ৪. প্রতিটি অংকের জন্য আউটপুট ফরম্যাট হবে নিম্নরূপ:
 
-                    # ৩. ইউজারের আপলোড করা খাতার ছবি যুক্ত করা
-                    contents.append("\n[ইউজারের আপলোড করা খাতার ছবি]:")
-                    contents.append(Image.open(query_image))
+                    ---
+                    ### 🔢 অংক ১: [খাতায় থাকা প্রশ্নটি]
+                    - 📌 **ম্যাচিং স্ট্যাটাস:** (🎯 হুবহু মিল / 🔄 টাইপ বা ধরন মিল)
+                    - 📖 **অধ্যায়:** 
+                    - 📄 **বইয়ের পৃষ্ঠা নম্বর:** 
+                    - 🔢 **বইয়ের কোশ্চেন/দাগ নম্বর:** 
 
-                    response = model.generate_content(contents)
+                    #### 📝 বইয়ের নিয়মে ধাপে ধাপে সম্পূর্ণ সমাধান:
+                    - 📐 **প্রযোজ্য সূত্র / নিয়ম:**
+                    - ✍️ **ধাপে ধাপে সমাধান (Step-by-Step):**
+                      * **ধাপ ১:** [প্রথম ধাপের গাণিতিক হিসেব ও ব্যাখ্যা]
+                      * **ধাপ ২:** [দ্বিতীয় ধাপের গাণিতিক হিসেব ও ব্যাখ্যা]
+                      * **ধাপ ৩:** [পরবর্তী ধাপের গাণিতিক হিসেব...]
+                    - ✅ **চূড়ান্ত উত্তর (Final Answer):**
+                    ---
+                    (ছবিতে থাকা প্রতিটি অংকের জন্য ওপরের সবকটি পয়েন্ট বজায় রেখে ধাপে ধাপে বিস্তারিত সমাধান লেখো)
+                    """
 
-                    st.balloons()
-                    st.markdown("""
-                    <div class="card" style="border-left: 6px solid #10b981;">
-                        <h2 style="color: #34d399; margin:0;">🎉 ১০+ অংকের অল-ইন-ওয়ান স্ক্যানিং সম্পূর্ণ!</h2>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.info(response.text)
+                contents = [prompt]
 
-                except Exception as e:
-                    st.error(f"একটি সমস্যা হয়েছে: {e}")
+                # PDF ও ফাইলগুলো প্রসেস করে যুক্ত করা
+                for pdf_path in pdf_files:
+                    with open(pdf_path, "rb") as f:
+                        contents.append({"mime_type": "application/pdf", "data": f.read()})
+
+                for img_path in image_files:
+                    contents.append(Image.open(img_path))
+
+                contents.append("\n[ইউজারের আপলোড করা খাতার ছবি]:")
+                contents.append(Image.open(query_image))
+
+                # Gemini API কল
+                response = model.generate_content(contents)
+
+                # লোডার সরিয়ে ফেলা
+                loader_placeholder.empty()
+
+                # রেজাল্ট প্রদর্শন
+                st.balloons()
+                st.markdown("""
+                <div class="card" style="border-left: 6px solid #10b981;">
+                    <h2 style="color: #34d399; margin:0;">🎉 অংক অনুসন্ধান ও বিশ্লেষণ সফল হয়েছে!</h2>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.info(response.text)
+
+            except Exception as e:
+                loader_placeholder.empty()
+                st.error(f"একটি সমস্যা হয়েছে: {e}")
 
 except Exception as e:
     st.error("⚠️ অ্যাপ কনফিগারেশনে সমস্যা হয়েছে। দয়া করে Streamlit Secrets-এ সঠিক 'GEMINI_API_KEY' যুক্ত করুন।")
-        
