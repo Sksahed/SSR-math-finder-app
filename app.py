@@ -243,7 +243,7 @@ try:
                     <div class="card" style="border-left: 6px solid #10b981;">
                         <h2 style="color: #34d399;">🎉 ফলাফল পাওয়া গেছে!</h2>
                     </div>
-                    """, unsafe_allow_html=Down := True)
+                    """, unsafe_allow_html=True)
                     
                     st.info(response.text)
 
