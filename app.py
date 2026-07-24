@@ -165,7 +165,6 @@ try:
         st.error("⚠️ Streamlit Secrets-এ GEMINI_API_KEY পাওয়া যায়নি! অনুগ্রহ করে Streamlit App Settings-এ গিয়ে এটি সেট করুন।")
     else:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
 
         # 📚 টেক্সট ফাইল লোড
         txt_files = sorted([f for f in glob.glob("*.txt") if f.lower() != "requirements.txt"] + glob.glob("books/*.txt"))
@@ -227,6 +226,22 @@ try:
             </div>
             """, unsafe_allow_html=True)
 
+        # 🛡️ 404 Error প্রতিরোধের জন্য অটো-ফলব্যাক ফাংশন
+        def generate_response_safe(contents):
+            candidate_models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro', 'gemini-pro']
+            last_error = None
+            for m_name in candidate_models:
+                try:
+                    m = genai.GenerativeModel(m_name)
+                    return m.generate_content(contents)
+                except Exception as err:
+                    last_error = err
+                    if "404" in str(err) or "not found" in str(err).lower():
+                        continue
+                    else:
+                        raise err
+            raise last_error
+
         # সার্চ লজিক
         if btn_find_only or btn_find_with_solution:
             if not txt_files:
@@ -263,7 +278,7 @@ try:
                         """
 
                     contents = [prompt, Image.open(query_image)]
-                    response = model.generate_content(contents)
+                    response = generate_response_safe(contents)
 
                     loader_placeholder.empty()
                     st.balloons()
