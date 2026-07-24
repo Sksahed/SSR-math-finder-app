@@ -185,8 +185,8 @@ try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
     
-    # ⚡ PDF ও ছবি দ্রুত এবং স্থিতিশীলভাবে স্ক্যান করার জন্য 'gemini-1.5-flash' সবচেয়ে সেরা মডেল
-    MODEL_NAME = 'gemini-1.5-flash'
+    # ⚡ সঠিক ও সক্রিয় মডেল নাম
+    MODEL_NAME = 'gemini-2.0-flash'
     model = genai.GenerativeModel(MODEL_NAME)
 
     # গিটহাব ডিরেক্টরি থেকে সব PDF ফাইল লোড করা
