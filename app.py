@@ -226,9 +226,10 @@ try:
             </div>
             """, unsafe_allow_html=True)
 
-        # 🛡️ 404 Error প্রতিরোধের জন্য অটো-ফলব্যাক ফাংশন
+        # 🛡️ ছবির অংক প্রসেস করার জন্য সঠিক Multimodal/Vision মডেল সিলেকশন
         def generate_response_safe(contents):
-            candidate_models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro', 'gemini-pro']
+            # শুধুমাত্র ছবি সাপোর্ট করে এমন আসল ভিজ্যুয়াল মডেল
+            candidate_models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b']
             last_error = None
             for m_name in candidate_models:
                 try:
@@ -236,10 +237,7 @@ try:
                     return m.generate_content(contents)
                 except Exception as err:
                     last_error = err
-                    if "404" in str(err) or "not found" in str(err).lower():
-                        continue
-                    else:
-                        raise err
+                    continue
             raise last_error
 
         # সার্চ লজিক
