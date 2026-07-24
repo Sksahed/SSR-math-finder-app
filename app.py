@@ -3,6 +3,7 @@ import google.generativeai as genai
 from PIL import Image
 import os
 import glob
+from pypdf import PdfReader
 
 # ১. পেজের লেআউট ও নাম সেটআপ
 st.set_page_config(
@@ -11,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ২. Custom CSS: থিম ও ভিজ্যুয়াল স্টাইলিং
+# ২. Custom CSS: স্টাইল ও থিম
 custom_css = """
 <style>
     #MainMenu {visibility: hidden !important;}
@@ -158,6 +159,29 @@ with col_head:
 with col_pika:
     st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=100)
 
+# 📚 পিডিএফ (PDF) থেকে ডাটা এক্সট্রাক্ট করার ফাংশন
+def extract_text_from_pdfs():
+    pdf_files = sorted(glob.glob("*.pdf") + glob.glob("books/*.pdf"))
+    combined_pdf_text = ""
+    loaded_names = []
+    
+    for pdf_path in pdf_files:
+        filename = os.path.basename(pdf_path)
+        try:
+            reader = PdfReader(pdf_path)
+            file_text = ""
+            for idx, page in enumerate(reader.pages):
+                text = page.extract_text()
+                if text:
+                    file_text += f"\n--- [ পৃষ্ঠা {idx + 1} ] ---\n" + text
+            if file_text.strip():
+                combined_pdf_text += f"\n\n=== [ PDF বই: {filename} ] ===\n\n" + file_text
+                loaded_names.append(filename)
+        except Exception as e:
+            st.sidebar.error(f"❌ {filename} পড়তে সমস্যা: {e}")
+            
+    return pdf_files, loaded_names, combined_pdf_text
+
 # ৪. সিকিউর এপিআই কনফিগারেশন
 try:
     api_key = st.secrets.get("GEMINI_API_KEY", "")
@@ -166,18 +190,16 @@ try:
     else:
         genai.configure(api_key=api_key)
 
-        # 📚 টেক্সট ফাইল লোড
-        txt_files = sorted([f for f in glob.glob("*.txt") if f.lower() != "requirements.txt"] + glob.glob("books/*.txt"))
-        full_book_data = ""
-        st.sidebar.markdown("### 📚 ডাটাবেজ স্ট্যাটাস")
-        if txt_files:
-            st.sidebar.success(f"✅ {len(txt_files)}টি টেক্সট ফাইল লোড করা হয়েছে।")
-            for file in txt_files:
-                st.sidebar.caption(f"📖 {os.path.basename(file)}")
-                with open(file, "r", encoding="utf-8") as f:
-                    full_book_data += f"\n\n=== [ ফাইল: {os.path.basename(file)} ] ===\n\n" + f.read()
+        # PDF ফাইল স্ক্যানিং
+        pdf_files, loaded_names, full_book_data = extract_text_from_pdfs()
+        
+        st.sidebar.markdown("### 📚 পিডিএফ ডাটাবেজ স্ট্যাটাস")
+        if loaded_names:
+            st.sidebar.success(f"✅ {len(loaded_names)}টি পিডিএফ ফাইল লোড হয়েছে।")
+            for name in loaded_names:
+                st.sidebar.caption(f"📖 {name}")
         else:
-            st.sidebar.warning("⚠️ গিটহাবে কোনো টেক্সট (.txt) ফাইল খুঁজে পাওয়া যায়নি।")
+            st.sidebar.warning("⚠️ গিটহাবে কোনো পিডিএফ (.pdf) ফাইল খুঁজে পাওয়া যায়নি।")
 
         st.sidebar.markdown("---")
         st.sidebar.info("🔒 নিরাপত্তা: শুধুমাত্র ফাউন্ডার (SK Sahed) নতুন ফাইল যুক্ত করতে পারবেন।")
@@ -188,7 +210,7 @@ try:
             st.markdown("""
             <div class="card" style="border-left: 6px solid #ec4899;">
                 <h3 style='color: #f8fafc; margin-top: 0;'>🔍 খাতার প্রশ্ন আপলোড করো</h3>
-                <p style='color: #cbd5e1; font-size: 14px;'>তোমার খাতার পাতা বা বইয়ের অংকের ছবি আপলোড করো। সম্পূর্ণ বইয়ের ডাটাবেজ থেকে এআই মুহূর্তেই সঠিক অংক ও উত্তর খুঁজে দেবে!</p>
+                <p style='color: #cbd5e1; font-size: 14px;'>তোমার খাতার পাতা বা বইয়ের অংকের ছবি আপলোড করো। সম্পূর্ণ পিডিএফ বইয়ের ডাটাবেজ থেকে এআই মুহূর্তেই সঠিক অংক ও উত্তর খুঁজে দেবে!</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -220,16 +242,15 @@ try:
                         একটু wait করুন, দ্রুত বইয়ের পাতা উল্টে আপনার প্রশ্নটি খোঁজা হচ্ছে... 🔍📖
                     </h4>
                     <p style="color: #38bdf8; margin: 5px 0 0 0; font-size: 13px;">
-                        ⚡ সম্পূর্ণ বইয়ের টেক্সট ডাটাবেজ থেকে দ্রুত স্ক্যান করা হচ্ছে...
+                        ⚡ সম্পূর্ণ পিডিএফ বইয়ের ডাটাবেজ থেকে দ্রুত স্ক্যান করা হচ্ছে...
                     </p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-        # 🛡️ ছবির অংক প্রসেস করার জন্য সঠিক Multimodal/Vision মডেল সিলেকশন
+        # 🛡️ Gemini Flash-lite / Flash মডেল প্রসেসিং উইথ অটো-ফলব্যাক
         def generate_response_safe(contents):
-            # শুধুমাত্র ছবি সাপোর্ট করে এমন আসল ভিজ্যুয়াল মডেল
-            candidate_models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b']
+            candidate_models = ['gemini-1.5-flash', 'gemini-2.0-flash-lite-preview-02-05', 'gemini-1.5-flash-8b', 'gemini-1.5-pro']
             last_error = None
             for m_name in candidate_models:
                 try:
@@ -242,8 +263,8 @@ try:
 
         # সার্চ লজিক
         if btn_find_only or btn_find_with_solution:
-            if not txt_files:
-                st.error("⚠️ গিটহাবে কোনো বইয়ের টেক্সট (.txt) ফাইল নেই!")
+            if not loaded_names:
+                st.error("⚠️ গিটহাবে কোনো পিডিএফ (.pdf) ফাইল নেই! দয়া করে পিডিএফ ফাইল আপলোড রয়েছে কিনা নিশ্চিত করুন।")
             elif not query_image:
                 st.error("⚠️ যে অংকটি স্ক্যান করতে চান, তার ছবি আপলোড করুন!")
             else:
@@ -255,24 +276,29 @@ try:
                     if btn_find_only:
                         prompt = f"""
                         তুমি একজন সুনিপুণ গণিত শিক্ষক ও এআই স্ক্যানার।
-                        তোমাকে পাঠ্যবইয়ের সম্পূর্ণ টেক্সট ডাটাবেজ এবং নিচে একটি খাতার অংকের ছবি দেওয়া হয়েছে।
+                        তোমাকে পাঠ্যবইয়ের সম্পূর্ণ পিডিএফ ডাটাবেজ এবং নিচে একটি খাতার অংকের ছবি দেওয়া হয়েছে।
 
-                        --- [ পাঠ্যবইয়ের ডাটাবেজ শুরু ] ---
+                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শুরু ] ---
                         {full_book_data}
-                        --- [ পাঠ্যবইয়ের ডাটাবেজ শেষ ] ---
+                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শেষ ] ---
 
-                        অংকটি বইয়ের মধ্যে খুঁজে নিয়ে অধ্যায়, পৃষ্ঠা ও দাগ নম্বর প্রদান করো।
+                        ⚠️ নির্দেশনাসমূহ:
+                        ১. খাতার ছবির অংকটি পাঠ্যবইয়ের ডাটাবেজের সাথে মিলিয়ে বের করো।
+                        ২. যদি অংকটি ডাটাবেজে না থাকে, তবে বিনয়ের সাথে বলো যে অংকটি বইয়ের মধ্যে খুঁজে পাওয়া যায়নি।
+                        ৩. যদি পাওয়া যায়, তবে অধ্যায়, পৃষ্ঠা নম্বর ও দাগ নম্বর সঠিকভাবে প্রদান করো।
                         """
                     else:
                         prompt = f"""
                         তুমি একজন অভিজ্ঞ গণিত শিক্ষক।
-                        তোমাকে পাঠ্যবইয়ের সম্পূর্ণ টেক্সট ডাটাবেজ এবং নিচে একটি খাতার অংকের ছবি দেওয়া হয়েছে।
+                        তোমাকে পাঠ্যবইয়ের সম্পূর্ণ পিডিএফ ডাটাবেজ এবং নিচে একটি খাতার অংকের ছবি দেওয়া হয়েছে।
 
-                        --- [ পাঠ্যবইয়ের ডাটাবেজ শুরু ] ---
+                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শুরু ] ---
                         {full_book_data}
-                        --- [ পাঠ্যবইয়ের ডাটাবেজ শেষ ] ---
+                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শেষ ] ---
 
-                        অংকটি কোথায় আছে তা বের করো এবং ধাপে ধাপে (Step-by-Step) সমাধান করো।
+                        ⚠️ নির্দেশনাসমূহ:
+                        ১. খাতার ছবির অংকটি পাঠ্যবইয়ের ডাটাবেজে কোথায় আছে তা বের করো (অধ্যায়, পৃষ্ঠা ও দাগ নম্বর)।
+                        ২. বইয়ের নিয়মানুযায়ী ধাপে ধাপে (Step-by-Step) সঠিক সমাধান করে দাও।
                         """
 
                     contents = [prompt, Image.open(query_image)]
@@ -295,4 +321,4 @@ try:
 
 except Exception as e:
     st.error(f"অ্যাপ কনফিগারেশনে সমস্যা: {e}")
-        
+    
