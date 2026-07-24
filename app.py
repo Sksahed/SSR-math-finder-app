@@ -180,12 +180,17 @@ with col_head:
 with col_pika:
     st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=100)
 
-# ৪. এপিআই কনফিগারেশন ও ফাইল লোডিং
+# ৪. এপিআই কনফিগারেশন ও মডেল সিলেকশন (Gemini 1.5 Flash)
 try:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    try:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    except:
+        api_key = "AQ.Ab8RN6JyvvcGoHfZ7E0PlSYqCosm2FEvrkzqU0Rmc1tNJidjww"
+
     genai.configure(api_key=api_key)
     
-    MODEL_NAME = 'gemini-2.0-flash'
+    # ফ্রি কোটা বাঁচানোর জন্য Gemini 1.5 Flash মডেল
+    MODEL_NAME = 'gemini-1.5-flash'
     model = genai.GenerativeModel(MODEL_NAME)
 
     # 📚 গিটহাব থেকে সমস্ত টেক্সট ফাইল লোড করা (requirements.txt বাদ দিয়ে)
@@ -232,16 +237,19 @@ try:
     with btn_col2:
         btn_find_with_solution = st.button("📝 অংকটি উত্তর সহ খোঁজো")
 
+    # 🎬 কাস্টম লোডিং মেসেজ ও GIF অ্যানিমেশন
     def show_custom_loading():
-        return st.markdown("""
+        gif_url = "https://raw.githubusercontent.com/Sksahed/SSR-math-finder-app/refs/heads/main/loading.gif"
+        
+        return st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(16px); padding: 20px; border-radius: 24px; border: 2px solid #a855f7; display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0;">
-            <img src="https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif" width="90" style="border-radius: 12px;">
+            <img src="{gif_url}" width="140" style="border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
             <div>
                 <h4 style="color: #f8fafc; margin: 0; font-size: 18px; font-weight: 600;">
-                    একটু wait করুন Sk sahed স্যার পিকাচু আর ডোরেমন কে সাথে নিয়ে আপনার প্রশ্নটি খুঁজছে... 🔍⚡
+                    একটু wait করুন, দ্রুত বইয়ের পাতা উল্টে আপনার প্রশ্নটি খোঁজা হচ্ছে... 🔍📖
                 </h4>
                 <p style="color: #38bdf8; margin: 5px 0 0 0; font-size: 13px;">
-                    📖 সম্পূর্ণ বইয়ের টেক্সট ডাটাবেজ থেকে খুব দ্রুত স্ক্যান করা হচ্ছে...
+                    ⚡ সম্পূর্ণ বইয়ের টেক্সট ডাটাবেজ থেকে দ্রুত স্ক্যান করা হচ্ছে...
                 </p>
             </div>
         </div>
