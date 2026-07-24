@@ -1,13 +1,8 @@
 import streamlit as st
-import requests
-import base64
+import google.generativeai as genai
+from PIL import Image
 import os
 import glob
-from PIL import Image
-
-# 🎯 তোমার পছন্দের সবচেয়ে ফাস্ট ও লাইট (Lite) মডেল নাম এখানে সেট করা হয়েছে:
-# (ভবিষ্যতে গুগল নতুন কোনো মডেল আনলে তুমি শুধু এই নামটা বদলে নিতে পারবে)
-MODEL_NAME = "gemini-2.0-flash-lite"
 
 # ১. পেজের লেআউট ও নাম সেটআপ
 st.set_page_config(
@@ -16,10 +11,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# ২. Custom CSS: অ্যানিমেটেড ব্যাকগ্রাউন্ড, স্টাইলিং ও টুলবার হাইড
+# ২. Custom CSS: আকর্ষণীয় থিম ও ভিজ্যুয়াল স্টাইলিং
 custom_css = """
 <style>
-    /* 🚫 Streamlit এর 'Manage app', ফুটার ও হেডার মেনু পুরোপুরি হাইড করার কোড */
+    /* Streamlit এর বাড়তি হেডার ও টুলবার হাইড */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -31,7 +26,6 @@ custom_css = """
     div[class*="viewerBadge"] {display: none !important;}
     button[title="View app in Streamlit Community Cloud"] {display: none !important;}
 
-    /* স্মুথ অ্যানিমেটেড ব্যাকগ্রাউন্ড গ্রেডিয়েন্ট */
     @keyframes animatedBackground {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
@@ -46,7 +40,6 @@ custom_css = """
         color: #f8fafc;
     }
 
-    /* হেডার বক্স স্টাইল */
     .header-container {
         background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
         padding: 30px;
@@ -58,7 +51,6 @@ custom_css = """
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    /* স্টাইলিশ গ্লাসমরফিজম কার্ড */
     .card {
         background: rgba(30, 41, 59, 0.75);
         backdrop-filter: blur(16px);
@@ -70,7 +62,6 @@ custom_css = """
         margin-bottom: 20px;
     }
 
-    /* সাইডবার স্টাইলিশ করা */
     [data-testid="stSidebar"] {
         background-color: rgba(15, 23, 42, 0.9);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -80,7 +71,6 @@ custom_css = """
         color: #f8fafc;
     }
 
-    /* আকর্ষণীয় রঙিন অ্যানিমেটেড বাটন */
     .stButton > button {
         background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%) !important;
         color: white !important;
@@ -99,7 +89,6 @@ custom_css = """
         box-shadow: 0 12px 30px rgba(236, 72, 153, 0.7) !important;
     }
 
-    /* রেজাল্ট বক্সের (st.info / st.success) টেক্সট স্টাইল */
     [data-testid="stAlert"] {
         background: rgba(15, 23, 42, 0.9) !important;
         backdrop-filter: blur(16px) !important;
@@ -109,10 +98,7 @@ custom_css = """
         padding: 20px !important;
     }
 
-    [data-testid="stAlert"] p, 
-    [data-testid="stAlert"] li, 
-    [data-testid="stAlert"] span, 
-    [data-testid="stAlert"] div {
+    [data-testid="stAlert"] p, [data-testid="stAlert"] li, [data-testid="stAlert"] span, [data-testid="stAlert"] div {
         color: #f1f5f9 !important;
         font-size: 16px !important;
         line-height: 1.7 !important;
@@ -126,7 +112,7 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# --- 👑 FOUNDER POPUP DIALOG ---
+# --- 👑 AUTOMATIC POP-UP DIALOG ---
 @st.dialog("👑 Meet the Founder")
 def show_founder_popup():
     col1, col2 = st.columns([1, 2])
@@ -139,7 +125,7 @@ def show_founder_popup():
             <br><br>
             <div style="position: relative; display: inline-block;">
                 <img src="{founder_photo}" width="160" style="border-radius: 20px; border: 3px solid #a855f7; box-shadow: 0 8px 25px rgba(0,0,0,0.4);">
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif" width="50" style="position: absolute; bottom: -12px; right: -15px; filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.5));">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif" width="50" style="position: absolute; bottom: -12px; right: -15px;">
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -156,7 +142,7 @@ if "founder_popup_shown" not in st.session_state:
     st.session_state.founder_popup_shown = True
     show_founder_popup()
 
-# --- 🌟 TOP WELCOME BAR ---
+# --- 🌟 ওপরে স্টাইলিশ ওয়েলকাম বার ---
 founder_photo_url = "https://raw.githubusercontent.com/Sksahed/SSR-math-finder-app/refs/heads/main/IMG_20260609_112752_911.webp"
 
 st.markdown(f"""
@@ -174,46 +160,40 @@ st.markdown(f"""
 ">
     <img src="{founder_photo_url}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #a855f7;">
     <div>
-        <div style="margin: 0; color: #f8fafc; font-size: 16px; font-weight: 600;">
-            Welcome to my AI finding website 👋
-        </div>
-        <div style="margin: 0; font-size: 12px; color: #cbd5e1; font-weight: 500;">
-            Created by SK Sahed
-        </div>
+        <div style="margin: 0; color: #f8fafc; font-size: 16px; font-weight: 600;">Welcome to my AI finding website 👋</div>
+        <div style="margin: 0; font-size: 12px; color: #cbd5e1; font-weight: 500;">Created by SK Sahed</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ৩. Header
+# ৩. হেডার
 col_dora, col_head, col_pika = st.columns([1, 3, 1])
-
 with col_dora:
     st.image("https://media.giphy.com/media/l41FJv_sYvEw4P73y/giphy.gif", width=100)
-
 with col_head:
     st.markdown("""
     <div class="header-container">
-        <h1 style='margin:0; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.2);'>✨ Math Finder AI Pro ✨</h1>
-        <p style='font-size: 16px; opacity: 0.95; margin-top: 8px;'>
-            ডোরেমন ও পিকাচুর সাথে জাদুকরী এআই দিয়ে অংক খুঁজে বের করো!
-        </p>
+        <h1 style='margin:0; font-weight: 700;'>✨ Math Finder AI Pro ✨</h1>
+        <p style='font-size: 16px; opacity: 0.95; margin-top: 8px;'>ডোরেমন ও পিকাচুর সাথে জাদুকরী এআই দিয়ে অংক খুঁজে বের করো!</p>
     </div>
     """, unsafe_allow_html=True)
-
 with col_pika:
     st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=100)
 
-# ৪. এপিআই কি ও ফাইলসমূহ চেক
+# ৪. এপিআই কনফিগারেশন ও ফাইল লোডিং
 try:
-    raw_api_key = st.secrets["GEMINI_API_KEY"]
-    api_key = str(raw_api_key).strip()
+    api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)
+    MODEL_NAME = 'gemini-2.0-flash'
+    model = genai.GenerativeModel(MODEL_NAME)
 
-    pdf_files = glob.glob("*.pdf") + glob.glob("books/*.pdf")
-    image_files = glob.glob("books/*.png") + glob.glob("books/*.jpg") + glob.glob("books/*.jpeg")
+    # গিটহাব ডিরেক্টরি থেকে সব PDF ফাইল লোড করা
+    pdf_files = sorted(list(set(glob.glob("*.pdf") + glob.glob("books/*.pdf"))))
 
-    st.sidebar.markdown("### 📚 ডাটাবেজে স্থায়ী বইসমূহ")
-    if pdf_files or image_files:
-        st.sidebar.success(f"✅ {len(pdf_files) + len(image_files)}টি ফাইল সার্ভারে প্রস্তুত আছে।")
+    # সাইডবার ইনফো (তথ্যসূত্র হিসেবে)
+    st.sidebar.markdown("### 📚 ডাটাবেজ স্ট্যাটাস")
+    if pdf_files:
+        st.sidebar.success(f"✅ {len(pdf_files)}টি বই/খণ্ড প্রস্তুত আছে।")
         for p in pdf_files:
             st.sidebar.caption(f"📖 {os.path.basename(p)}")
     else:
@@ -222,12 +202,33 @@ try:
     st.sidebar.markdown("---")
     st.sidebar.info("🔒 নিরাপত্তা: শুধুমাত্র ফাউন্ডার (SK Sahed) নতুন বই যুক্ত করতে পারবেন।")
 
+    # 🎯 প্রধান পেজে সহজ ও স্পষ্ট অধ্যায়/খণ্ড নির্বাচনের কার্ড
+    st.markdown("""
+    <div class="card" style="border-left: 6px solid #a855f7;">
+        <h3 style='color: #f8fafc; margin-top: 0;'>📚 ধাপ ১: বইয়ের অধ্যায়/খণ্ড নির্বাচন করো</h3>
+        <p style='color: #cbd5e1; font-size: 14px;'>তোমার অংকটি আনুমানিক কোন অধ্যায় বা খণ্ডের মধ্যে আছে নিচে থেকে বেছে নাও:</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    selected_pdf = None
+    if pdf_files:
+        selected_pdf = st.selectbox(
+            "🎯 কোন অধ্যায় বা খণ্ডের মধ্যে অংকটি আছে বেছে নিন:",
+            pdf_files,
+            format_func=lambda x: f"📖 {os.path.basename(x)}"
+        )
+    else:
+        st.error("⚠️ গিটহাবে কোনো বইয়ের PDF খুঁজে পাওয়া যায়নি। আগে গিটহাবে PDF আপলোড করুন।")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 🔍 খাতার প্রশ্ন আপলোড করার অংশ (ধাপ ২)
     col_m1, col_m2 = st.columns([3, 1])
     with col_m1:
         st.markdown("""
-        <div class="card">
-            <h3 style='color: #f8fafc; margin-top: 0;'>🔍 খাতার প্রশ্ন আপলোড করো</h3>
-            <p style='color: #cbd5e1;'>খাতার পাতা বা অংকের ছবি আপলোড করো। এরপর নিচের যেকোনো একটি অপশনে ক্লিক করে স্ক্যান শুরু করো!</p>
+        <div class="card" style="border-left: 6px solid #ec4899;">
+            <h3 style='color: #f8fafc; margin-top: 0;'>🔍 ধাপ ২: খাতার প্রশ্ন আপলোড করো</h3>
+            <p style='color: #cbd5e1; font-size: 14px;'>খাতার পাতা বা অংকের ছবি আপলোড করো। এরপর নিচের যেকোনো একটি বাটনে ক্লিক করে স্ক্যান শুরু করো!</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -241,107 +242,32 @@ try:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # অ্যাকশন বাটনসমূহ
     btn_col1, btn_col2 = st.columns(2)
-
     with btn_col1:
         btn_find_only = st.button("🔍 অংকটি কোথায় আছে খোঁজো")
-
     with btn_col2:
         btn_find_with_solution = st.button("📝 অংকটি উত্তর সহ খোঁজো")
 
-    # 🎬 ক্লোই পার্কের (Chloe Park) দ্রুত বই পড়ার GIF সহ লোডার
     def show_custom_loading():
         return st.markdown("""
-        <div style="
-            background: rgba(30, 41, 59, 0.95);
-            backdrop-filter: blur(16px);
-            padding: 20px;
-            border-radius: 24px;
-            border: 2px solid #a855f7;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            margin: 20px 0;
-        ">
-            <img src="https://media.giphy.com/media/l0HlTy9x8FZo0XO1i/giphy.gif" width="110" style="border-radius: 16px; border: 2px solid #ec4899; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));">
-            <div style="text-align: left;">
-                <h4 style="color: #f8fafc; margin: 0; font-size: 18px; font-weight: 600; line-height: 1.4;">
+        <div style="background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(16px); padding: 20px; border-radius: 24px; border: 2px solid #a855f7; display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0;">
+            <img src="https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif" width="90" style="border-radius: 12px;">
+            <div>
+                <h4 style="color: #f8fafc; margin: 0; font-size: 18px; font-weight: 600;">
                     একটু wait করুন Sk sahed স্যার পিকাচু আর ডোরেমন কে সাথে নিয়ে আপনার প্রশ্নটি খুঁজছে... 🔍⚡
                 </h4>
-                <p style="color: #38bdf8; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
-                    📖 বইয়ের সকল অধ্যায় ও পৃষ্ঠা স্ক্যান করা হচ্ছে...
+                <p style="color: #38bdf8; margin: 5px 0 0 0; font-size: 13px;">
+                    📖 নির্বাচিত খণ্ড থেকে অতি দ্রুত অংকটি স্ক্যান করা হচ্ছে...
                 </p>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # ⚡ গুগল REST API (Flash-Lite / Light-weight মডেল ব্যবহার করে)
-    def call_gemini_api(api_key, prompt_text, pdf_paths, image_paths, user_img_file):
-        parts = [{"text": prompt_text}]
-
-        # ১. বইয়ের PDF যুক্ত করা
-        for pdf_path in pdf_paths:
-            with open(pdf_path, "rb") as f:
-                pdf_b64 = base64.b64encode(f.read()).decode('utf-8')
-                parts.append({
-                    "inline_data": {
-                        "mime_type": "application/pdf",
-                        "data": pdf_b64
-                    }
-                })
-
-        # ২. বইয়ের ছবিসমূহ যুক্ত করা
-        for img_path in image_paths:
-            with open(img_path, "rb") as f:
-                img_b64 = base64.b64encode(f.read()).decode('utf-8')
-                mime = "image/png" if img_path.lower().endswith(".png") else "image/jpeg"
-                parts.append({
-                    "inline_data": {
-                        "mime_type": mime,
-                        "data": img_b64
-                    }
-                })
-
-        # ৩. ইউজারের আপলোড করা খাতার ছবি যুক্ত করা
-        user_img_bytes = user_img_file.getvalue()
-        user_img_b64 = base64.b64encode(user_img_bytes).decode('utf-8')
-        mime_type = user_img_file.type if user_img_file.type else "image/jpeg"
-        
-        parts.append({"text": "\n[ইউজারের আপলোড করা খাতার ছবি]:"})
-        parts.append({
-            "inline_data": {
-                "mime_type": mime_type,
-                "data": user_img_b64
-            }
-        })
-
-        payload = {
-            "contents": [{
-                "parts": parts
-            }]
-        }
-
-        # 🚀 নির্ধারিত মডেলের REST API এন্ডপয়েন্ট
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
-        headers = {"Content-Type": "application/json"}
-
-        response = requests.post(url, json=payload, headers=headers, timeout=120)
-        res_data = response.json()
-
-        if response.status_code == 200:
-            try:
-                return res_data['candidates'][0]['content']['parts'][0]['text']
-            except Exception:
-                return "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।"
-        else:
-            error_msg = res_data.get('error', {}).get('message', 'অজানা এরর')
-            raise Exception(f"গুগল এপিআই এরর (Code {response.status_code}): {error_msg}")
-
+    # বাটন লজিক
     if btn_find_only or btn_find_with_solution:
-        if not (pdf_files or image_files):
-            st.error("⚠️ গিটহাবে কোনো বই পাওয়া যায়নি! আগে গিটহাবে বইয়ের PDF ফাইল আপলোড করুন।")
+        if not selected_pdf:
+            st.error("⚠️ কোনো বই নির্বাচিত নেই! আগে গিটহাবে PDF ফাইল আপলোড করুন।")
         elif not query_image:
             st.error("⚠️ যে অংকটি স্ক্যান করতে চান, তার ছবি আপলোড করুন!")
         else:
@@ -353,16 +279,15 @@ try:
                 if btn_find_only:
                     prompt = """
                     তুমি একজন সুনিপুণ গণিত শিক্ষক ও এআই স্ক্যানার।
-                    তোমাকে পাঠ্যবইয়ের PDF পৃষ্ঠা এবং শেষে খাতার ছবি দেওয়া হয়েছে।
+                    তোমাকে পাঠ্যবইয়ের নির্দিষ্ট খণ্ডের PDF এবং শেষে খাতার ছবি দেওয়া হয়েছে।
 
-                    ⚠️ নির্দেশনাসমূহ:
-                    ১. খাতার ছবিটিতে থাকা **সকল অংক চিহ্নিত করো**।
-                    ২. প্রতিটি অংক বইয়ের কোথায় আছে তা বের করো:
-                       - **🎯 হুবহু মিল:** যদি বইয়ের প্রশ্ন ও সংখ্যা হুবহু এক হয়।
-                       - **🔄 টাইপ / ধারণাগত মিল:** যদি প্রশ্নের নিয়ম এক কিন্তু সংখ্যা পরিবর্তিত।
+                    ⚠️ অতি গুরুত্বপূর্ণ নির্দেশনাসমূহ:
+                    ১. প্রথমে যাচাই করো যে, খাতার ছবিটির অংক বা প্রশ্নটি এই নির্দিষ্ট খণ্ডের PDF-এর ভেতরে আছে কি না।
+                    ২. যদি অংকটি এই নির্দিষ্ট খণ্ডে **না থাকে**, তবে অন্য কিছু না লিখে সরাসরি এই মেসেজটি দিয়ে দাও:
+                       "⚠️ **এই অংকটি আপনার নির্বাচিত অধ্যায়ে নেই!** দয়া করে ড্রপডাউন থেকে সঠিক খণ্ড বা অধ্যায়টি সিলেক্ট করুন।"
+                    ৩. যদি অংকটি এই খণ্ডের মধ্যে **থাকে**, তবে নিচের ফরম্যাটে তথ্য প্রদান করো:
                     
-                    ৩. নিম্নের বিন্যাসে তথ্য উপস্থাপন করো:
-
+                    আউটপুট ফরম্যাট:
                     ---
                     ### 🔢 অংক ১: [খাতায় থাকা অংকটি]
                     - 📌 **স্ট্যাটাস:** (🎯 হুবহু মিল / 🔄 টাইপ মিল)
@@ -371,51 +296,55 @@ try:
                     - 🔢 **বইয়ের কোশ্চেন/দাগ নম্বর:** 
                     - 💡 **সংক্ষিপ্ত সূত্র/ধরন:**
                     ---
-                    (ছবিতে থাকা প্রতিটি অংকের জন্য একইভাবে তথ্য দাও)
                     """
                 else:
                     prompt = """
                     তুমি একজন অভিজ্ঞ গণিত শিক্ষক।
-                    তোমাকে পাঠ্যবই এবং শেষে ইউজারের খাতার ছবি দেওয়া হয়েছে।
+                    তোমাকে পাঠ্যবইয়ের নির্দিষ্ট খণ্ডের PDF এবং শেষে খাতার ছবি দেওয়া হয়েছে।
 
-                    ⚠️ মূল নির্দেশনাসমূহ:
-                    ১. খাতার ছবিটির প্রতিটি অংক পৃথকভাবে শনাক্ত করো।
-                    ২. প্রতিটি অংক বইয়ের কোথায় আছে (অধ্যায়, পৃষ্ঠা ও দাগ নম্বর) বের করো।
-                    ৩. 🎯 **ধাপে ধাপে সমাধান:** বইয়ের নির্দিষ্ট নিয়ম ও সূত্র প্রয়োগ করে অংকগুলোর **ধাপে ধাপে (Step 1, Step 2, Step 3...) সম্পূর্ণ সমাধান** লেখো।
+                    ⚠️ অতি গুরুত্বপূর্ণ নির্দেশনাসমূহ:
+                    ১. প্রথমে যাচাই করো যে, খাতার ছবিটির অংক বা প্রশ্নটি এই নির্দিষ্ট খণ্ডের PDF-এর ভেতরে আছে কি না।
+                    ২. যদি অংকটি এই নির্দিষ্ট খণ্ডে **না থাকে**, তবে অন্য কিছু না লিখে সরাসরি এই মেসেজটি দিয়ে দাও:
+                       "⚠️ **এই অংকটি আপনার নির্বাচিত অধ্যায়ে নেই!** দয়া করে ড্রপডাউন থেকে সঠিক খণ্ড বা অধ্যায়টি সিলেক্ট করুন।"
+                    ৩. যদি অংকটি এই খণ্ডের মধ্যে **থাকে**, তবে অংকটি বইয়ের কোন অধ্যায়, পৃষ্ঠা ও দাগ নম্বরে আছে তা বের করো এবং বইয়ের নিয়মানুযায়ী ধাপে ধাপে (Step-by-Step) সঠিক সমাধান করে দাও।
 
-                    ৪. আউটপুট ফরম্যাট:
-
+                    আউটপুট ফরম্যাট:
                     ---
                     ### 🔢 অংক ১: [খাতায় থাকা প্রশ্নটি]
-                    - 📌 **ম্যাচিং স্ট্যাটাস:** (🎯 হুবহু মিল / 🔄 টাইপ বা ধরন মিল)
+                    - 📌 **স্ট্যাটাস:** (🎯 হুবহু মিল / 🔄 টাইপ মিল)
                     - 📖 **অধ্যায়:** 
                     - 📄 **বইয়ের পৃষ্ঠা নম্বর:** 
                     - 🔢 **বইয়ের কোশ্চেন/দাগ নম্বর:** 
 
-                    #### 📝 বইয়ের নিয়মে ধাপে ধাপে সম্পূর্ণ সমাধান:
-                    - 📐 **প্রযোজ্য সূত্র / নিয়ম:**
-                    - ✍️ **ধাপে ধাপে সমাধান (Step-by-Step):**
-                      * **ধাপ ১:** [প্রথম ধাপের হিসেব ও ব্যাখ্যা]
-                      * **ধাপ ২:** [দ্বিতীয় ধাপের হিসেব ও ব্যাখ্যা]
-                      * **ধাপ ৩:** [পরবর্তী ধাপ...]
+                    #### 📝 বইয়ের নিয়মানুযায়ী সঠিক সমাধান:
+                    - 📐 **ব্যবহৃত সূত্র:**
+                    - ✍️ **ধাপে ধাপে সমাধান:**
                     - ✅ **চূড়ান্ত উত্তর (Final Answer):**
                     ---
-                    (ছবিতে থাকা প্রতিটি অংকের জন্য বিস্তারিত সমাধান লেখো)
                     """
 
-                # এপিআই কল
-                result_text = call_gemini_api(api_key, prompt, pdf_files, image_files, query_image)
+                contents = [prompt]
+
+                # ⚡ কেবল নির্বাচিত ১টি PDF ফাইল এপিআই-তে পাঠানো হচ্ছে
+                with open(selected_pdf, "rb") as f:
+                    contents.append({"mime_type": "application/pdf", "data": f.read()})
+
+                contents.append("\n[ইউজারের আপলোড করা খাতার ছবি]:")
+                contents.append(Image.open(query_image))
+
+                # Gemini API কল
+                response = model.generate_content(contents)
 
                 loader_placeholder.empty()
-
                 st.balloons()
+                
                 st.markdown("""
                 <div class="card" style="border-left: 6px solid #10b981;">
-                    <h2 style="color: #34d399; margin:0;">🎉 অংক অনুসন্ধান ও বিশ্লেষণ সফল হয়েছে!</h2>
+                    <h2 style="color: #34d399; margin:0;">🎉 অংক অনুসন্ধান সম্পন্ন হয়েছে!</h2>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                st.info(result_text)
+                st.info(response.text)
 
             except Exception as e:
                 loader_placeholder.empty()
@@ -423,4 +352,4 @@ try:
 
 except Exception as e:
     st.error("⚠️ অ্যাপ কনফিগারেশনে সমস্যা হয়েছে। Streamlit Secrets-এ 'GEMINI_API_KEY' সঠিক আছে কিনা নিশ্চিত করুন।")
-        
+    
