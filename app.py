@@ -3,7 +3,6 @@ import google.generativeai as genai
 from PIL import Image
 import os
 import glob
-from pypdf import PdfReader
 
 # ১. পেজের লেআউট ও নাম সেটআপ
 st.set_page_config(
@@ -159,28 +158,10 @@ with col_head:
 with col_pika:
     st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif", width=100)
 
-# 📚 পিডিএফ (PDF) থেকে ডাটা এক্সট্রাক্ট করার ফাংশন
-def extract_text_from_pdfs():
-    pdf_files = sorted(glob.glob("*.pdf") + glob.glob("books/*.pdf"))
-    combined_pdf_text = ""
-    loaded_names = []
-    
-    for pdf_path in pdf_files:
-        filename = os.path.basename(pdf_path)
-        try:
-            reader = PdfReader(pdf_path)
-            file_text = ""
-            for idx, page in enumerate(reader.pages):
-                text = page.extract_text()
-                if text:
-                    file_text += f"\n--- [ পৃষ্ঠা {idx + 1} ] ---\n" + text
-            if file_text.strip():
-                combined_pdf_text += f"\n\n=== [ PDF বই: {filename} ] ===\n\n" + file_text
-                loaded_names.append(filename)
-        except Exception as e:
-            st.sidebar.error(f"❌ {filename} পড়তে সমস্যা: {e}")
-            
-    return pdf_files, loaded_names, combined_pdf_text
+# 📚 গিটহাব ডিরেক্টরি থেকে PDF ফাইল খোঁজার ফাংশন
+def find_pdf_files():
+    pdf_list = sorted(glob.glob("*.pdf") + glob.glob("*.PDF") + glob.glob("books/*.pdf") + glob.glob("books/*.PDF"))
+    return pdf_list
 
 # ৪. সিকিউর এপিআই কনফিগারেশন
 try:
@@ -190,14 +171,13 @@ try:
     else:
         genai.configure(api_key=api_key)
 
-        # PDF ফাইল স্ক্যানিং
-        pdf_files, loaded_names, full_book_data = extract_text_from_pdfs()
+        pdf_files = find_pdf_files()
         
         st.sidebar.markdown("### 📚 পিডিএফ ডাটাবেজ স্ট্যাটাস")
-        if loaded_names:
-            st.sidebar.success(f"✅ {len(loaded_names)}টি পিডিএফ ফাইল লোড হয়েছে।")
-            for name in loaded_names:
-                st.sidebar.caption(f"📖 {name}")
+        if pdf_files:
+            st.sidebar.success(f"✅ {len(pdf_files)}টি পিডিএফ ফাইল সংযুক্ত আছে।")
+            for pdf_path in pdf_files:
+                st.sidebar.caption(f"📖 {os.path.basename(pdf_path)}")
         else:
             st.sidebar.warning("⚠️ গিটহাবে কোনো পিডিএফ (.pdf) ফাইল খুঁজে পাওয়া যায়নি।")
 
@@ -242,20 +222,26 @@ try:
                         একটু wait করুন, দ্রুত বইয়ের পাতা উল্টে আপনার প্রশ্নটি খোঁজা হচ্ছে... 🔍📖
                     </h4>
                     <p style="color: #38bdf8; margin: 5px 0 0 0; font-size: 13px;">
-                        ⚡ সম্পূর্ণ পিডিএফ বইয়ের ডাটাবেজ থেকে দ্রুত স্ক্যান করা হচ্ছে...
+                        ⚡ স্ক্যান করা পিডিএফ সরাসরি AI দিয়ে বিশ্লেষণ করা হচ্ছে...
                     </p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-        # 🛡️ Gemini Flash-lite / Flash মডেল প্রসেসিং উইথ অটো-ফলব্যাক
-        def generate_response_safe(contents):
-            candidate_models = ['gemini-1.5-flash', 'gemini-2.0-flash-lite-preview-02-05', 'gemini-1.5-flash-8b', 'gemini-1.5-pro']
+        # 🛡️ Gemini API-তে সরাসরি PDF ফাইল আপলোড ও প্রসেস করার সেফ ফাংশন
+        def process_with_gemini(prompt, target_pdf_path, user_image_file):
+            candidate_models = ['gemini-1.5-flash', 'gemini-2.0-flash-lite-preview-02-05', 'gemini-1.5-pro']
+            
+            # Gemini-র কাছে সরাসরি পুরো PDF আপলোড (যা ছবির মতো পড়া যায়)
+            uploaded_pdf = genai.upload_file(target_pdf_path)
+            
             last_error = None
             for m_name in candidate_models:
                 try:
                     m = genai.GenerativeModel(m_name)
-                    return m.generate_content(contents)
+                    # প্রম্পট, পিডিএফ ফাইল এবং ইউজার ছবি একসাথে প্রসেস করা
+                    response = m.generate_content([prompt, uploaded_pdf, Image.open(user_image_file)])
+                    return response.text
                 except Exception as err:
                     last_error = err
                     continue
@@ -263,8 +249,8 @@ try:
 
         # সার্চ লজিক
         if btn_find_only or btn_find_with_solution:
-            if not loaded_names:
-                st.error("⚠️ গিটহাবে কোনো পিডিএফ (.pdf) ফাইল নেই! দয়া করে পিডিএফ ফাইল আপলোড রয়েছে কিনা নিশ্চিত করুন।")
+            if not pdf_files:
+                st.error("⚠️ গিটহাবে কোনো পিডিএফ (.pdf) ফাইল নেই! দয়া করে গিটহাবে পিডিএফ ফাইল আপলোড রয়েছে কিনা নিশ্চিত করুন।")
             elif not query_image:
                 st.error("⚠️ যে অংকটি স্ক্যান করতে চান, তার ছবি আপলোড করুন!")
             else:
@@ -273,36 +259,28 @@ try:
                     show_custom_loading()
 
                 try:
+                    primary_pdf = pdf_files[0] # প্রধান পিডিএফ ফাইল বেছে নেয়া
+
                     if btn_find_only:
-                        prompt = f"""
-                        তুমি একজন সুনিপুণ গণিত শিক্ষক ও এআই স্ক্যানার।
-                        তোমাকে পাঠ্যবইয়ের সম্পূর্ণ পিডিএফ ডাটাবেজ এবং নিচে একটি খাতার অংকের ছবি দেওয়া হয়েছে।
+                        prompt = """
+                        তুমি একজন অভিজ্ঞ গণিত শিক্ষক ও AI সার্চ এআই।
+                        তোমাকে একটি পাঠ্যবইয়ের পুরো PDF এবং একটি খাতার অংকের ছবি দেওয়া হলো।
 
-                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শুরু ] ---
-                        {full_book_data}
-                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শেষ ] ---
-
-                        ⚠️ নির্দেশনাসমূহ:
-                        ১. খাতার ছবির অংকটি পাঠ্যবইয়ের ডাটাবেজের সাথে মিলিয়ে বের করো।
-                        ২. যদি অংকটি ডাটাবেজে না থাকে, তবে বিনয়ের সাথে বলো যে অংকটি বইয়ের মধ্যে খুঁজে পাওয়া যায়নি।
-                        ৩. যদি পাওয়া যায়, তবে অধ্যায়, পৃষ্ঠা নম্বর ও দাগ নম্বর সঠিকভাবে প্রদান করো।
+                        কী করবে:
+                        ১. খাতার ছবির অংকটি PDF বইয়ের মধ্যে খুঁজে বের করো।
+                        ২. বইয়ের কত নম্বর অধ্যায়, কত নম্বর পৃষ্ঠা (Page) এবং কত দাগ নম্বর অংকটি রয়েছে তা পরিষ্কার বাংলা ভাষায় সংক্ষেপে জানিয়ে দাও।
                         """
                     else:
-                        prompt = f"""
+                        prompt = """
                         তুমি একজন অভিজ্ঞ গণিত শিক্ষক।
-                        তোমাকে পাঠ্যবইয়ের সম্পূর্ণ পিডিএফ ডাটাবেজ এবং নিচে একটি খাতার অংকের ছবি দেওয়া হয়েছে।
+                        তোমাকে একটি পাঠ্যবইয়ের পুরো PDF এবং একটি খাতার অংকের ছবি দেওয়া হলো।
 
-                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শুরু ] ---
-                        {full_book_data}
-                        --- [ পাঠ্যবইয়ের পিডিএফ ডাটাবেজ শেষ ] ---
-
-                        ⚠️ নির্দেশনাসমূহ:
-                        ১. খাতার ছবির অংকটি পাঠ্যবইয়ের ডাটাবেজে কোথায় আছে তা বের করো (অধ্যায়, পৃষ্ঠা ও দাগ নম্বর)।
-                        ২. বইয়ের নিয়মানুযায়ী ধাপে ধাপে (Step-by-Step) সঠিক সমাধান করে দাও।
+                        কী করবে:
+                        ১. খাতার ছবির অংকটি PDF বইয়ের কোথায় আছে তা খুঁজে বের করো (অধ্যায়, পৃষ্ঠা ও দাগ নম্বর)।
+                        ২. অংকটি বইয়ের নিয়ম মেনে নিখুঁতভাবে ধাপে ধাপে (Step-by-Step) সহজ ভাষায় সমাধান করে দাও।
                         """
 
-                    contents = [prompt, Image.open(query_image)]
-                    response = generate_response_safe(contents)
+                    result_text = process_with_gemini(prompt, primary_pdf, query_image)
 
                     loader_placeholder.empty()
                     st.balloons()
@@ -313,7 +291,7 @@ try:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    st.info(response.text)
+                    st.info(result_text)
 
                 except Exception as e:
                     loader_placeholder.empty()
@@ -321,4 +299,4 @@ try:
 
 except Exception as e:
     st.error(f"অ্যাপ কনফিগারেশনে সমস্যা: {e}")
-    
+        
